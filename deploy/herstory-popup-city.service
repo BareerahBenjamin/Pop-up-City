@@ -1,0 +1,57 @@
+[Unit]
+Description=Herstory Pop-up City independent activity service
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=herstory-popup-city
+Group=herstory-popup-city
+WorkingDirectory=/opt/herstory-popup-city/current
+EnvironmentFile=/etc/herstory-popup-city/server.env
+# 专用 Node 路径，不能替换旧程序使用的全局 Node。
+ExecStart=/opt/herstory-popup-city/runtime/bin/node --max-old-space-size=256 server.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+UMask=0077
+StateDirectory=herstory-popup-city
+StateDirectoryMode=0700
+MemoryHigh=384M
+MemoryMax=512M
+MemorySwapMax=0
+CPUQuota=50%
+CPUWeight=20
+IOWeight=20
+TasksMax=64
+LimitNOFILE=1024
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectKernelLogs=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+# 除公共系统文件外，隐藏常见的旧站代码与数据目录。
+InaccessiblePaths=-/root -/srv -/var/www -/etc/ssl/private
+TemporaryFileSystem=/opt:ro /var/lib:ro
+BindReadOnlyPaths=/opt/herstory-popup-city
+BindPaths=/var/lib/herstory-popup-city
+ReadWritePaths=/var/lib/herstory-popup-city
+StandardOutput=journal
+StandardError=journal
+LogRateLimitIntervalSec=30s
+LogRateLimitBurst=30
+SyslogIdentifier=herstory-popup-city
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,6 @@
+# 仅为新增站点片段；禁止用这个文件覆盖现有 Caddyfile。
+# 与 PUBLIC_ORIGIN=https://kunyuan.site 保持一致。
+kunyuan.site {
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:3300
+}

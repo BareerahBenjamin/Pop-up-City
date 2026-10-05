@@ -1,0 +1,62 @@
+{
+  "source_archive": "series.zip",
+  "use": "用户提供主视觉素材，原图复制，未重绘",
+  "assets": [
+    {
+      "file": "festival-title.png",
+      "source": "series/文本/2 (2).png",
+      "dimensions": [
+        2765,
+        591
+      ]
+    },
+    {
+      "file": "pop-up-city.png",
+      "source": "series/文本/2 (5).png",
+      "dimensions": [
+        2898,
+        975
+      ]
+    },
+    {
+      "file": "herstory-logo.png",
+      "source": "series/文本/2 (6).png",
+      "dimensions": [
+        586,
+        149
+      ]
+    },
+    {
+      "file": "computer.png",
+      "source": "series/延展/2 (1).png",
+      "dimensions": [
+        1288,
+        1406
+      ]
+    },
+    {
+      "file": "heart.png",
+      "source": "series/延展/2 (2).png",
+      "dimensions": [
+        1333,
+        1304
+      ]
+    },
+    {
+      "file": "vase.png",
+      "source": "series/延展/2 (3).png",
+      "dimensions": [
+        1223,
+        1229
+      ]
+    },
+    {
+      "file": "orbit.png",
+      "source": "series/延展/2 (4).png",
+      "dimensions": [
+        1272,
+        1283
+      ]
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "name": "herstory-popup-city-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.16.0"
+  },
+  "scripts": {
+    "start": "node --env-file=.env server.js",
+    "migrate": "node --env-file=.env manage.js migrate",
+    "admin": "node --env-file=.env manage.js admin",
+    "test": "node --test test/*.test.js",
+    "backup": "node --env-file=.env backup.js"
+  },
+  "dependencies": {
+    "nodemailer": "10.0.12",
+    "qrcode": "1.5.4",
+    "sharp": "0.35.5"
+  }
+}

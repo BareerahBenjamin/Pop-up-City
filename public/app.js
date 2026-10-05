@@ -1,0 +1,221 @@
+'use strict';
+const $=selector=>document.querySelector(selector);
+const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+const state={me:null,events:[],tasks:[],members:[],records:null,adminMembers:[],route:'events',busy:false};
+const catalog=window.HERSTORY_AVATAR_CATALOG;
+const dateFmt=new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'});
+const datetime=value=>value?dateFmt.format(new Date(value*1000)):'时间待定';
+const inputDate=value=>value?`${eventDay(value)}T${eventClock(value)}`:'';
+const avatarCache=new Map();
+let toastTimer=0,renderEpoch=0;
+function toast(message){$('#toast').textContent=message;$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),3600)}
+function modal(html){$('#modal-content').innerHTML=html;if(!$('#modal').open)$('#modal').showModal()}
+function close(){if($('#modal').open)$('#modal').close()}
+async function api(path,options={}){
+  const headers={'Accept':'application/json',...(options.body?{'Content-Type':'application/json'}:{})};
+  const response=await fetch(path,{credentials:'same-origin',...options,headers:{...headers,...options.headers},body:options.body?JSON.stringify(options.body):undefined});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok){const error=new Error(data.error||`请求未完成（${response.status}）`);error.status=response.status;throw error;}
+  return data;
+}
+async function loadMe(){try{state.me=(await api('/api/me')).member}catch(error){if(!/请先登录/.test(error.message))console.warn('session unavailable',error);state.me=null}}
+async function loadEvents(){state.events=(await api('/api/events')).events}
+async function loadTasks(){state.tasks=(await api('/api/tasks')).tasks}
+async function loadMembers(){state.members=(await api('/api/members')).members}
+async function loadRecords(){state.records=await api('/api/me/records')}
+async function loadAdminMembers(){state.adminMembers=(await api('/api/admin/members')).members}
+function avatarHtml(member,size='small') {return `<span class="avatar ${size}" data-avatar-id="${esc(member?.id||'')}" aria-label="${esc(member?.nickname||'成员')}的头像">${esc((member?.nickname||'她').slice(0,1))}</span>`}
+async function avatarData(config){
+  const key=JSON.stringify(config);config=JSON.parse(key||'null');if(avatarCache.has(key))return avatarCache.get(key);
+  if(!catalog||config?.release!==catalog.release||!config?.selection)return null;
+  const canvas=document.createElement('canvas');canvas.width=512;canvas.height=512;const ctx=canvas.getContext('2d');
+  const assets=[...catalog.layers].sort((a,b)=>a.order-b.order).map(layer=>catalog.assets.find(a=>a.layer===layer.id&&(!layer.selectable||a.id===config.selection[layer.id]))).filter(a=>a&&a.kind!=='none'&&a.image);
+  for(const asset of assets){const img=new Image();img.src=asset.image;try{await img.decode()}catch{return null}ctx.drawImage(img,0,0,512,512)}
+  const image=canvas.toDataURL('image/png');avatarCache.set(key,image);return image;
+}
+async function decorateAvatars(){
+  const allMembers=[...state.members,state.me].filter(Boolean);
+  const byId=new Map(allMembers.map(m=>[m.id,m]));
+  const nodes=[...document.querySelectorAll('[data-avatar-id]')];
+  await Promise.all(nodes.map(async node=>{const m=byId.get(node.dataset.avatarId);if(!m?.avatar)return;const image=await avatarData(m.avatar);if(image&&node.isConnected){node.innerHTML=`<img src="${image}" alt="">`;node.classList.add('has-image')}}));
+}
+function empty(message,action=''){return `<div class="empty">${message}${action?`<div>${action}</div>`:''}</div>`}
+function requireLogin(){if(state.me)return true;showLogin();return false}
+function eventCoverField(event){return `<section class="event-cover-field" aria-labelledby="event-cover-label"><label class="field" id="event-cover-label" for="event-cover-file">活动封面（选填）</label><p id="event-cover-help" class="muted">支持 JPG、PNG、WebP，最大 5 MB。建议使用 16:9 横图；列表会居中裁切，详情页显示完整图片。</p><input type="file" id="event-cover-file" accept="image/jpeg,image/png,image/webp" aria-describedby="event-cover-help event-cover-status event-cover-error"><div class="event-cover-preview" id="event-cover-preview"><img id="event-cover-image" alt="活动封面预览" ${event?.cover_url?`src="${esc(event.cover_url)}"`:'hidden'}><span id="event-cover-placeholder" ${event?.cover_url?'hidden':''}>未设置封面时使用默认插画</span></div><div class="event-cover-controls"><p id="event-cover-status" class="muted" role="status">${event?.cover_url?'当前封面；保存活动后应用更改。':'选择图片后可预览，提交活动时一起保存。'}</p><button type="button" class="text-button" data-action="remove-event-cover" ${event?.cover_url?'':'hidden'}>移除封面</button></div><p id="event-cover-error" class="error" role="alert"></p></section>`}
+function removeEventCover(){
+  const form=$('#event-form');if(!form||form.dataset.busy)return;
+  form._coverReadId=(form._coverReadId||0)+1;form._coverReading=false;form._coverInvalid=false;form._coverChange=null;
+  $('#event-cover-file').value='';$('#event-cover-file').removeAttribute('aria-invalid');
+  $('#event-cover-image').removeAttribute('src');$('#event-cover-image').hidden=true;$('#event-cover-placeholder').hidden=false;
+  $('#event-cover-preview').setAttribute('aria-busy','false');$('#event-cover-error').textContent='';
+  $('#event-cover-status').textContent='保存后使用默认插画。';form.querySelector('[data-action="remove-event-cover"]').hidden=true;
+}
+async function selectEventCover(input){
+  const form=input.closest('form'),file=input.files[0];if(!file||form.dataset.busy)return;
+  const readId=form._coverReadId=(form._coverReadId||0)+1;
+  const current=()=>form.isConnected&&form._coverReadId===readId;
+  form._coverReading=true;form._coverInvalid=false;input.removeAttribute('aria-invalid');
+  $('#event-cover-error').textContent='';$('#event-cover-preview').setAttribute('aria-busy','true');
+  $('#event-cover-status').textContent='正在读取图片…';
+  try{
+    if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw new Error('请选择 JPG、PNG 或 WebP 图片。');
+    if(file.size>5*1024*1024)throw new Error('图片超过 5 MB，请换一张较小的图片。');
+    const source=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error('读取图片失败，请重新选择。'));reader.readAsDataURL(file)});
+    const image=new Image();image.src=source;try{await image.decode()}catch{throw new Error('无法读取这张图片，请重新选择。')}
+    if(image.naturalWidth*image.naturalHeight>25000000)throw new Error('图片超过 2500 万像素，请缩小后重试。');
+    if(!current())return;form._coverChange=source;
+    $('#event-cover-image').src=source;$('#event-cover-image').hidden=false;$('#event-cover-placeholder').hidden=true;
+    $('#event-cover-status').textContent='预览已更新；保存活动后生效。';
+  }catch(error){
+    if(!current())return;form._coverInvalid=true;input.setAttribute('aria-invalid','true');
+    $('#event-cover-error').textContent=error.message;$('#event-cover-status').textContent='图片未应用，请重新选择或移除封面。';
+  }finally{
+    if(current()){form._coverReading=false;$('#event-cover-preview').setAttribute('aria-busy','false');form.querySelector('[data-action="remove-event-cover"]').hidden=false;}
+  }
+}
+document.addEventListener('change',event=>{if(event.target.id==='event-cover-file')selectEventCover(event.target)});
+function header(){const me=state.me;$('#admin-nav').hidden=me?.role!=='admin';$('#account').innerHTML=me?`<span class="account-name">${esc(me.nickname)}</span> ${avatarHtml(me)}`:'成员登录 ↗';document.querySelectorAll('nav a').forEach(link=>link.classList.toggle('active',link.hash.slice(1)===state.route));$('#site-status').textContent=me?`已登录 · ${roleLabel(me)}`:'学习、链接、创造、玩。'}
+function hero(){return `<section class="hero festival-hero" aria-label="科技碰瓷节 · Herstory Pop-up City"><div class="festival-meta"><span>江西 · 景德镇</span><span>2026.10.19 — 11.01</span></div><img class="festival-title" src="/assets/series/festival-title.png" alt="科技碰瓷节" width="2765" height="591" fetchpriority="high"><div class="festival-stage"><div class="hero-copy"><p class="festival-caption">HERSTORY · POP-UP CITY</p><h1>一座城市，<br>由<span>我们</span>一起发生。</h1><div class="hero-bottom"><p>100 名女性创造者，14 天共同生活。<br>学习、链接、创造、玩。</p><button class="btn" data-action="new-event">发起一个活动 ＋</button></div></div><div class="hero-art" aria-hidden="true"><img class="festival-script" src="/assets/series/pop-up-city.png" alt="" width="2898" height="975"><img class="festival-computer" src="/assets/series/computer.png" alt="" width="1288" height="1406"><img class="festival-heart" src="/assets/series/heart.png" alt="" width="1333" height="1304"></div></div><div class="festival-footnote" aria-hidden="true"><span>学习 / 链接 / 创造 / 玩</span><span>一起生活，也一起建造。</span></div></section>`}
+function eventCard(event,index){
+  const colors=['pink','lime','orange','purple'];const color=colors[index%colors.length];const artwork=['computer','vase','heart','orbit'][index%4];
+  return `<article class="event-card" data-interest-surface="card:${esc(event.id)}"><a class="card-link" href="#event/${esc(event.id)}">${event.cover_url?`<div class="cover uploaded-cover"><img class="event-cover-photo" src="${esc(event.cover_url)}" alt="" loading="lazy" width="1600" height="900"></div>`:`<div class="cover ${color}"><small>${esc(event.category)} / ${datetime(event.starts_at)}</small><img class="event-art" src="/assets/series/${artwork}.png" alt="" width="1288" height="1406" loading="lazy"><div class="cover-word">${esc(event.category)}</div><span class="cover-number" aria-hidden="true">${String(index+1).padStart(2,'0')}</span></div>`}<div class="card-body">${event.status!=='published'?`<span class="badge neutral">${statusText(event.status)}</span>`:event.official?'<span class="badge">Herstory 举办</span>':`<span class="badge neutral">${esc(event.category)}</span>`}<h3>${esc(event.title)}</h3><p class="meta">${datetime(event.starts_at)} · ${esc(event.location)}</p><p class="volunteer">${event.volunteer_capacity?`志愿者 ${event.volunteer_count}/${event.volunteer_capacity}`:'一起把想法变成真实的相遇'}</p><div class="host"><span>发起人 ${esc(event.host_nickname)}</span><span class="meta">${event.attendee_count}/${event.capacity} 人</span></div></div></a>${interestButton(event,true)}${interestFeedbackSlot(event)}</article>`
+}
+function statusText(status){return {pending:'待审核',published:'已发布',rejected:'需修改',cancelled:'已取消',invited:'待登录',active:'已加入',disabled:'已停用'}[status]||status}
+function eventsPage(){
+  const visible=state.events.filter(e=>e.status==='published'||e.status==='cancelled'||e.host_id===state.me?.id||state.me?.role==='admin');
+  return `${hero()}${todaySchedule()}${calendarSection(visible)}<section><div class="section-head"><div><h2>在这里，让想法碰面。</h2><p>找一件想做的事，或者发起你自己的活动。</p></div><span class="section-symbol" aria-hidden="true">✳</span></div><div class="grid">${visible.length?visible.map(eventCard).join(''):empty('活动正在筹备中。发布后会在这里出现。')}</div></section>`
+}
+function eventPage(id){
+  const e=state.events.find(item=>item.id===id);if(!e)return empty('找不到这个活动。');
+  const open=e.status==='published'&&e.starts_at>Date.now()/1000;const canEdit=state.me&&(e.host_id===state.me.id||state.me.role==='admin');
+  return `<a class="text-button" href="#events">← 全部活动</a><div class="detail"><div>${e.cover_url?`<img class="detail-cover-photo" src="${esc(e.cover_url)}" alt="${esc(e.title)}活动封面">`:""}<div class="detail-cover">${e.official?'<span class="badge neutral">Herstory 举办</span>':`<span class="eyebrow">${esc(e.category)}</span>`}<h1>${esc(e.title)}</h1><p>发起人 ${esc(e.host_nickname)}</p></div>${!open?`<div class="notice">${eventTimeLabel(e)}${e.reason?` · ${esc(e.reason)}`:''}</div>`:''}<div class="detail-copy">${esc(e.description)}</div>${e.volunteer_capacity?`<div class="panel"><h3>志愿者招募</h3><p>已报名 ${e.volunteer_count}/${e.volunteer_capacity} 人</p><button class="btn light" data-action="toggle-volunteer" data-id="${esc(e.id)}" ${!e.my_volunteering&&(!open||e.volunteer_count>=e.volunteer_capacity)?'disabled':''}>${e.my_volunteering?'取消志愿者报名':open?'报名志愿者':eventTimeLabel(e)}</button></div>`:''}</div><aside><h3>我们在这里见</h3><dl class="facts"><div><dt>活动时间</dt><dd>${datetime(e.starts_at)} — ${datetime(e.ends_at)}</dd></div><div><dt>地点</dt><dd>${esc(e.location)}</dd></div><div><dt>状态</dt><dd>${eventTimeLabel(e)}</dd></div><div><dt>参与人数</dt><dd>${e.attendee_count}/${e.capacity} 人</dd></div></dl><div class="stack" data-interest-surface="detail:${esc(e.id)}">${interestButton(e)}${interestFeedbackSlot(e)}${e.status==='published'||canEdit?`<button class="btn light" data-action="event-poster" data-id="${esc(e.id)}">生成分享海报</button>`:''}<button class="btn lime" data-action="toggle-attendee" data-id="${esc(e.id)}" ${!e.my_attending&&(!open||e.attendee_count>=e.capacity)?'disabled':''}>${e.my_attending?'取消参加':open?'我要参加 ↗':eventTimeLabel(e)}</button>${canEdit?`<button class="btn light" data-action="edit-event" data-id="${esc(e.id)}">编辑活动</button>`:''}${state.me?.role==='admin'?`<button class="btn light" data-action="roster" data-id="${esc(e.id)}">查看报名名单</button>`:''}</div></aside></div>`
+}
+function tasksPage(){if(!state.me)return gate('一起生活，小事也算数。','生活任务仅向已登录成员开放。');return `<section class="section-intro"><div><span class="eyebrow">02 / EVERYDAY TOGETHER</span><h1>一起生活，小事也算数。</h1><p>洗一摞碗、做一顿饭、整理一个角落。认领一件小事，让共同生活更好。</p></div><button class="btn" data-action="new-task">发布生活任务 ＋</button></section><div class="section-head"><h2>生活任务</h2><span class="meta">${state.tasks.length} 件</span></div><div class="task-list">${state.tasks.length?state.tasks.map(t=>`<article class="task"><div class="task-icon">${esc(t.category.slice(0,1))}</div><div><h3>${esc(t.title)}</h3><p>${esc(t.location)} · ${datetime(t.deadline)} 前</p><p>${esc(t.description)}</p><p>发起人 ${esc(t.host_nickname)} · ${t.claim_count}/${t.capacity} 人</p></div><div class="task-actions">${t.my_completed_at?'<span class="badge">已完成</span>':t.my_claimed?`<button class="btn lime" data-action="complete-task" data-id="${esc(t.id)}">标记完成</button><button class="text-button" data-action="leave-task" data-id="${esc(t.id)}">退出任务</button>`:`<button class="btn light" data-action="join-task" data-id="${esc(t.id)}" ${t.claim_count>=t.capacity?'disabled':''}>${t.claim_count>=t.capacity?'已满员':'领取任务 ＋'}</button>`}${t.host_id===state.me.id||state.me.role==='admin'?`<button class="text-button" data-action="edit-task" data-id="${esc(t.id)}">编辑任务</button>`:''}</div></article>`).join(''):empty('还没有生活任务。你可以发布第一件小事。')}</div>`}
+function gate(title,message){return `<section class="section-intro"><div><span class="eyebrow">HERSTORY / COMMUNITY</span><h1>${esc(title)}</h1><p>${esc(message)}</p></div><button class="btn" data-action="login">用邮箱登录 ↗</button></section>`}
+function membersPage(){if(!state.me)return gate('认识一起建造的人。','成员资料仅向已登录成员开放。');return `<div class="content-intro"><div><span class="eyebrow">03 / COMMUNITY</span><h1>每个人，都是这座城市的一部分。</h1><p>在这里认识一起学习、生活和创造的邻居。</p></div><span class="badge">${state.members.length} 位成员</span></div><div class="grid member-grid">${state.members.length?state.members.map(m=>`<a class="member-card" href="#member/${esc(m.id)}">${avatarHtml(m)}<h3>${esc(m.nickname)}</h3><p>${esc(m.bio||'还没有写下介绍。')}</p><span class="text-button">看看她的主页 ↗</span></a>`).join(''):empty('成员资料正在准备中。')}</div>`}
+function profilePage(member,owned,details){if(!member)return empty('找不到这位成员。');const records=owned?state.records:null;return `<div class="profile-head">${avatarHtml(member,'large')}<div><span class="eyebrow">${owned?'我的主页':'成员主页'}</span><h1>${esc(member.nickname)}</h1><p class="muted">${esc(member.bio||'这位成员还没有写下介绍。')}</p></div>${owned?`<div class="profile-actions"><button class="btn light" data-action="edit-profile">编辑资料</button><button class="btn" data-action="edit-avatar">制作头像</button><button class="text-button" data-action="logout">退出登录</button></div>`:''}</div><div class="profile-grid"><aside class="profile-values"><h3>关于我</h3><p><strong>擅长／感兴趣</strong><br>${esc(member.skills||'暂未填写')}</p><p><strong>希望遇见</strong><br>${esc(member.needs||'暂未填写')}</p>${owned?`<p class="muted">登录邮箱：${esc(member.email)}</p>`:''}</aside><div><h3>发起的活动</h3>${details?.events?.length?details.events.map(e=>`<div class="record"><a href="#event/${esc(e.id)}">${esc(e.title)}</a><span>${datetime(e.starts_at)}</span></div>`).join(''):empty('还没有已发布的活动。')}<div class="profile-records"><h3>完成的生活任务</h3>${details?.completed_tasks?.length?details.completed_tasks.map(t=>`<div class="record"><span>${esc(t.title)}</span><span>${datetime(t.completed_at)}</span></div>`).join(''):empty('完成任务后会显示在这里。')}</div>${owned?`<div class="profile-records"><h3>硬件签到</h3>${records?.checkins?.length?records.checkins.map(c=>`<div class="record"><span>${esc(c.title)}</span><span>${datetime(c.checked_at)}</span></div>`).join(''):empty('还没有签到记录。')}</div><div class="profile-records"><h3>我的连接</h3>${records?.connections?.length?records.connections.map(c=>`<div class="record"><a href="#member/${esc(c.member_id)}">${esc(c.nickname)}</a><span>${datetime(c.connected_at)}</span></div>`).join(''):empty('社交连接会显示在这里。')}</div>`:''}</div></div>`}
+let adminTab='members';
+function adminPage(){if(state.me?.role!=='admin')return gate('仅管理员可以查看这里。','请使用已导入的管理员邮箱登录。');
+const tabs=`<div class="admin-tabs"><button class="filter ${adminTab==='members'?'selected':''}" data-action="admin-tab" data-tab="members">成员管理</button><button class="filter ${adminTab==='events'?'selected':''}" data-action="admin-tab" data-tab="events">活动管理</button></div>`;
+if(adminTab==='members')return `${tabs}<div class="content-intro"><div><span class="eyebrow">ADMIN / MEMBERS</span><h1>让每一位成员顺利加入。</h1><p>从报名名单一次导入邮箱和昵称。重复邮箱会被跳过。</p></div></div><div class="split"><form id="import-form" class="panel"><h3>导入成员</h3><label class="field">每行：邮箱,昵称<textarea name="rows" required placeholder="newmember@example.com,新邻居"></textarea></label><p class="muted">先核对名单，再导入正式成员库。</p><p id="form-error" class="error" role="alert"></p><button class="btn lime">检查并导入</button></form><div class="panel"><h3>邮箱就是成员的钥匙。</h3><p>管理员导入邮箱后，成员通过邮件链接或验证码登录。</p><p class="notice">发信服务未启用时，邀请按钮会提示暂不可用。</p></div></div><div class="table-wrap"><table><thead><tr><th>成员</th><th>邮箱</th><th>身份</th><th>状态</th><th>操作</th></tr></thead><tbody>${state.adminMembers.map(m=>`<tr><td>${esc(m.nickname)}</td><td>${esc(m.email)}</td><td>${roleLabel(m)}</td><td><span class="status-chip ${esc(m.status)}">${statusText(m.status)}</span></td><td><div class="admin-table-actions">${!m.is_super_admin||m.id===state.me.id?`<button class="text-button" data-action="admin-edit-member" data-id="${esc(m.id)}">编辑</button>`:''}${state.me.is_super_admin&&!m.is_super_admin&&m.id!==state.me.id?`<button class="text-button" data-action="set-member-role" data-id="${esc(m.id)}" ${m.status==='disabled'&&m.role==='member'?'disabled':''}>${m.role==='admin'?'撤销管理员':'设为管理员'}</button>`:''}<button class="text-button" data-action="invite-member" data-id="${esc(m.id)}">发登录邮件</button>${m.id!==state.me.id&&!m.is_super_admin?`<button class="text-button" data-action="toggle-member" data-id="${esc(m.id)}">${m.status==='disabled'?'启用':'停用'}</button>`:''}<button class="text-button" data-action="enroll-device" data-id="${esc(m.id)}">绑定设备</button><button class="text-button" data-action="list-devices" data-id="${esc(m.id)}">查看设备</button></div></td></tr>`).join('')}</tbody></table></div>`;
+return `${tabs}<div class="content-intro"><div><span class="eyebrow">ADMIN / EVENTS</span><h1>让每个好想法，有序发生。</h1><p>审核成员活动，维护官方标记与报名信息。</p></div><div class="page-actions"><button class="btn light" data-action="bulk-events">批量添加活动</button><button class="btn" data-action="new-event">新建活动 ＋</button></div></div><div class="admin-events">${state.events.length?state.events.map(e=>`<article class="admin-event"><div class="admin-event-info"><span class="status-chip ${esc(e.status)}">${statusText(e.status)}</span> ${e.official?'<span class="badge">Herstory 举办</span>':''}<h3><a href="#event/${esc(e.id)}">${esc(e.title)}</a></h3><p class="meta">${datetime(e.starts_at)} · ${esc(e.location)}<br>发起人 ${esc(e.host_nickname)} · 参与 ${e.attendee_count}/${e.capacity} · 志愿者 ${e.volunteer_count}/${e.volunteer_capacity}</p>${e.reason?`<p class="muted">${esc(e.reason)}</p>`:''}</div><div class="admin-event-actions">${e.status==='pending'?`<button class="btn lime" data-action="set-event-status" data-status="published" data-id="${esc(e.id)}">通过并发布</button><button class="btn light" data-action="set-event-status" data-status="rejected" data-id="${esc(e.id)}">退回修改</button>`:''}<button class="btn light" data-action="edit-event" data-id="${esc(e.id)}">编辑信息</button><button class="btn light" data-action="roster" data-id="${esc(e.id)}">报名名单</button><button class="text-button" data-action="toggle-official" data-id="${esc(e.id)}">${e.official?'取消官方标记':'标记为官方'}</button><button class="text-button" data-action="set-event-status" data-status="${e.status==='cancelled'?'published':'cancelled'}" data-id="${esc(e.id)}">${e.status==='cancelled'?'恢复发布':'取消活动'}</button><button class="text-button" data-action="event-audit" data-id="${esc(e.id)}">操作记录</button><button class="text-button" data-action="set-pin" data-id="${esc(e.id)}">设置签到口令</button></div></article>`).join(''):empty('还没有活动。')}</div>`}
+function showLogin(){modal(`<h2 id="dialog-title">欢迎回来，新邻居。</h2><p class="muted">输入管理员已导入的邮箱，获取登录链接和验证码。</p><form id="login-request-form"><label class="field">成员邮箱<input type="email" name="email" autocomplete="email" required placeholder="you@example.com"></label><p id="form-error" class="error" role="alert"></p><button class="btn wide">获取登录邮件</button></form>`)}
+function showCode(email){modal(`<h2 id="dialog-title">查看你的邮箱</h2><p>登录链接和六位验证码已发送到 ${esc(email)}，10 分钟内有效。</p><form id="login-code-form" data-email="${esc(email)}"><label class="field">邮箱验证码<input name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></label><p id="form-error" class="error" role="alert"></p><button class="btn wide">验证并登录</button></form><button class="text-button" data-action="login">换一个邮箱</button>`)}
+function showProfileForm(member,admin=false){modal(`<h2 id="dialog-title">${admin?'管理成员资料':'编辑个人资料'}</h2><form id="profile-form" data-id="${esc(member.id)}" data-admin="${admin?'1':'0'}"><label class="field">昵称<input name="nickname" maxlength="20" required value="${esc(member.nickname)}"></label><label class="field">一句话介绍<textarea name="bio" maxlength="160">${esc(member.bio)}</textarea></label><label class="field">擅长／感兴趣<input name="skills" maxlength="100" value="${esc(member.skills)}"></label><label class="field">想在这里找到<input name="needs" maxlength="160" value="${esc(member.needs)}"></label><label class="check"><input type="checkbox" name="card_public" ${member.card_public?'checked':''}>允许设备交换我的公开介绍</label><p class="private-note">登录邮箱只对本人和管理员可见。</p><p id="form-error" class="error" role="alert"></p><button class="btn wide">保存资料</button></form>`)}
+function showEventForm(event){const admin=state.me?.role==='admin';modal(`<h2 id="dialog-title">${event?'编辑':'发起'}一个活动</h2><form id="event-form" data-id="${esc(event?.id||'')}"><label class="field">活动名称<input name="title" maxlength="60" required value="${esc(event?.title||'')}"></label>${eventCoverField(event)}<div class="form-grid"><label class="field">开始时间（景德镇）<input type="datetime-local" name="start" required value="${inputDate(event?.starts_at)}"></label><label class="field">结束时间（景德镇）<input type="datetime-local" name="end" required value="${inputDate(event?.ends_at)}"></label></div><label class="field">地点<input name="location" maxlength="80" required value="${esc(event?.location||'')}"></label><label class="field">介绍<textarea name="description" maxlength="2000" required>${esc(event?.description||'')}</textarea></label><div class="form-grid"><label class="field">类型<input name="category" maxlength="30" required value="${esc(event?.category||'学习')}"></label><label class="field">参与名额<input type="number" name="capacity" min="1" max="150" required value="${event?.capacity||12}"></label></div><label class="field">志愿者名额（0 表示不招募）<input type="number" name="volunteer_capacity" min="0" max="30" required value="${event?.volunteer_capacity||0}"></label>${admin?`<label class="check"><input type="checkbox" name="official" ${event?.official?'checked':''}>Herstory 官方活动</label>`:'<p class="muted">成员发起的活动提交后由管理员审核；官方标记只由管理员设置。</p>'}<p id="form-error" class="error" role="alert"></p><button class="btn wide">${event?'保存活动':'提交活动'}</button></form>`)}
+function showTaskForm(task){modal(`<h2 id="dialog-title">${task?'编辑':'发布'}生活任务</h2><form id="task-form" data-id="${esc(task?.id||'')}"><label class="field">任务名称<input name="title" maxlength="60" required value="${esc(task?.title||'')}"></label><label class="field">说明<textarea name="description" maxlength="2000" required>${esc(task?.description||'')}</textarea></label><div class="form-grid"><label class="field">类型<input name="category" maxlength="30" required value="${esc(task?.category||'厨房')}"></label><label class="field">地点<input name="location" maxlength="80" required value="${esc(task?.location||'')}"></label></div><div class="form-grid"><label class="field">完成期限（景德镇）<input type="datetime-local" name="deadline" required value="${inputDate(task?.deadline)}"></label><label class="field">需要人数<input type="number" name="capacity" min="1" max="150" required value="${task?.capacity||3}"></label></div><p id="form-error" class="error" role="alert"></p><button class="btn wide">保存任务</button></form>`)}
+async function showRoster(id){const data=await api(`/api/admin/events/${id}/roster`);const attendee=data.registrations.filter(r=>r.kind==='attendee'),volunteer=data.registrations.filter(r=>r.kind==='volunteer');modal(`<h2 id="dialog-title">活动报名名单</h2><p>参与 ${attendee.length} 人 · 志愿者 ${volunteer.length} 人 · 已签到 ${data.checkins.length} 人</p><div class="table-wrap"><table><thead><tr><th>姓名</th><th>身份</th><th>邮箱</th><th>签到</th></tr></thead><tbody>${data.registrations.map(r=>`<tr><td>${esc(r.nickname)}</td><td>${r.kind==='volunteer'?'志愿者':'参与者'}</td><td>${esc(r.email)}</td><td>${data.checkins.some(c=>c.member_id===r.id)?'已签到':'—'}</td></tr>`).join('')}</tbody></table></div>`)}
+async function showAudit(id){const data=await api(`/api/admin/events/${id}/audit`);modal(`<h2 id="dialog-title">活动操作记录</h2>${data.history.length?data.history.map(h=>`<div class="record"><strong>${esc(h.action)}</strong><span>${datetime(h.created_at)} ${esc(h.reason)}</span></div>`).join(''):empty('暂无操作记录。')}`)}
+async function showDevices(id){const data=await api(`/api/admin/members/${id}/devices`);modal(`<h2 id="dialog-title">已绑定设备</h2><p class="muted">设备令牌只在签发时显示，遗失设备可在这里撤销。</p>${data.devices.length?data.devices.map(d=>`<div class="record"><span>${esc(d.id)}<br><small>${datetime(d.created_at)} 创建${d.revoked_at?` · ${datetime(d.revoked_at)} 已撤销`:''}</small></span>${d.revoked_at?'':`<button class="text-button" data-action="revoke-device" data-id="${esc(d.id)}" data-member-id="${esc(id)}">撤销</button>`}</div>`).join(''):empty('这位成员还没有绑定设备。')}`)}
+function showReason(id,status){modal(`<h2 id="dialog-title">${status==='rejected'?'退回修改':'取消活动'}</h2><form id="event-status-form" data-id="${esc(id)}" data-status="${esc(status)}"><label class="field">原因<textarea name="reason" maxlength="500" required></textarea></label><p id="form-error" class="error" role="alert"></p><button class="btn wide">确认</button></form>`)}
+function showPin(id){modal(`<h2 id="dialog-title">设置现场签到口令</h2><p class="muted">仅在现场向已报名成员公布六位数字。仅在活动开始前一小时内有效，开始后不能迟到签到。</p><form id="pin-form" data-id="${esc(id)}"><label class="field">六位数字<input name="pin" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="off"></label><p id="form-error" class="error" role="alert"></p><button class="btn wide">保存口令</button></form>`)}
+const formError=(form,error)=>{const target=form.querySelector('#form-error');if(target)target.textContent=error.message||String(error);else toast(error.message||String(error))};
+async function refresh(){await loadMe();await loadEvents();if(state.me){await Promise.all([loadMembers(),loadTasks(),loadRecords()]);if(state.me.role==='admin')await loadAdminMembers()}else{state.members=[];state.tasks=[];state.records=null;state.adminMembers=[]}await render()}
+async function render(){const view=captureInterestView();reconcileInterestOwner();const epoch=++renderEpoch;const route=(location.hash.slice(1)||'events').split('/')[0],id=location.hash.split('/')[1];state.route=route;header();let html;
+try{if(route==='events')html=eventsPage();else if(route==='event')html=eventPage(id);else if(route==='tasks')html=tasksPage();else if(route==='members')html=membersPage();else if(route==='me'){let details=null;if(state.me)details=await api(`/api/members/${state.me.id}`);html=state.me?profilePage(state.me,true,details):gate('欢迎回到 Pop-up City。','用管理员导入的邮箱登录，查看你的主页。')}else if(route==='member'){if(!state.me)html=gate('认识一起建造的人。','成员资料仅向已登录成员开放。');else{const details=await api(`/api/members/${id}`);html=profilePage(details.member,false,details)}}else if(route==='admin')html=adminPage();else html=empty('页面不存在。','<a href="#events">返回活动</a>');}catch(error){html=empty(esc(error.message))}
+if(epoch!==renderEpoch)return;$('#main').innerHTML=html;decorateAvatars();restoreInterestView(view);finishInterestNavigation();}
+async function mutation(action,success){try{await action();close();await refresh();toast(success)}catch(error){toast(error.message)}}
+let avatarEditor=null,avatarPaintVersion=0;
+function showAvatarEditor(){
+  if(!state.me)return;
+  if(!catalog?.layers?.length){toast('头像素材暂未加载');return}
+  const layers=catalog.layers.filter(l=>l.selectable).sort((a,b)=>a.order-b.order),selection={};
+  for(const layer of layers){
+    const existing=state.me.avatar?.release===catalog.release?state.me.avatar?.selection?.[layer.id]:null,options=catalog.assets.filter(a=>a.layer===layer.id);
+    selection[layer.id]=options.some(a=>a.id===existing)?existing:(options.find(a=>a.kind==='none')||options[0]).id;
+  }
+  avatarEditor={owner:state.me.id,layers,selection,active:layers[0].id,ready:false,saving:false};
+  modal(`<h2 id="dialog-title">做一个，很像你的头像。</h2><p class="avatar-intro">切换穿搭会移除遮挡的叠穿；你也可以再自由添加。</p><div class="avatar-studio"><div class="avatar-preview-pane"><canvas id="avatar-preview" width="512" height="512" role="img" aria-label="头像预览"></canvas><p id="avatar-status" class="muted" role="status">正在加载预览…</p></div><div><div class="avatar-categories" id="avatar-tabs"></div><h3 id="avatar-layer-title"></h3><div class="avatar-options" id="avatar-options"></div></div></div><p id="form-error" class="error" role="alert"></p><div class="modal-actions"><button class="btn light" data-action="close">取消</button><button class="btn light" data-action="retry-avatar" hidden>重试预览</button><button class="btn" data-action="save-avatar" disabled>保存头像</button></div>`);
+  renderAvatarEditor();
+}
+async function renderAvatarEditor(){
+  const editor=avatarEditor,canvas=$('#avatar-preview'),version=++avatarPaintVersion;
+  if(!editor||!canvas)return;
+  const {layers,active,selection}=editor,layer=layers.find(l=>l.id===active);
+  editor.ready=false;
+  $('[data-action="save-avatar"]').disabled=true;
+  $('[data-action="retry-avatar"]').hidden=true;
+  $('#form-error').textContent='';$('#avatar-status').textContent='正在组合你的头像…';
+  $('#avatar-tabs').innerHTML=layers.map(l=>`<button class="filter ${l.id===active?'selected':''}" data-action="avatar-layer" data-id="${esc(l.id)}" aria-pressed="${l.id===active}">${esc(l.name)}</button>`).join('');
+  $('#avatar-layer-title').textContent=layer.name;
+  $('#avatar-options').innerHTML=catalog.assets.filter(a=>a.layer===active).map(a=>`<button type="button" class="avatar-option ${selection[active]===a.id?'selected':''}" data-action="avatar-choice" data-id="${esc(a.id)}" aria-pressed="${selection[active]===a.id}">${a.image?`<img src="${a.image}" alt="" loading="lazy">`:'<span class="avatar-none">∅</span>'}<span>${esc(a.name)}</span></button>`).join('');
+  const current=()=>avatarEditor===editor&&version===avatarPaintVersion&&canvas===$('#avatar-preview')&&$('#modal').open;
+  try{
+    const image=await avatarData({release:catalog.release,selection:{...selection}});
+    if(!image)throw new Error('素材加载失败');
+    const img=new Image();img.src=image;await img.decode();
+    if(!current())return;
+    canvas.getContext('2d').clearRect(0,0,512,512);canvas.getContext('2d').drawImage(img,0,0,512,512);
+    editor.ready=true;$('[data-action="save-avatar"]').disabled=false;$('#avatar-status').textContent='预览已更新，保存后使用这套搭配。';
+  }catch{
+    if(!current())return;
+    $('#avatar-status').textContent='预览未完成';$('#form-error').textContent='素材未能加载，已保留你的选择，请重试。';$('[data-action="retry-avatar"]').hidden=false;
+  }
+}
+$('#modal').addEventListener('close',()=>{if(!$('#modal').open){avatarEditor=null;++avatarPaintVersion;++posterVersion}});
+async function performAction(button){const a=button.dataset.action,id=button.dataset.id;
+if(a==='close'){close();return}if(a==='account'){if(state.me)location.hash='#me';else showLogin();return}if(a==='login'){showLogin();return}if(a==='logout'){await mutation(()=>api('/api/auth/logout',{method:'POST'}),'已退出登录');location.hash='#events';return}
+if(await handleEventTools(button))return;
+if(a==='remove-event-cover'){removeEventCover();return}
+if(a==='new-event'){if(requireLogin())showEventForm(null);return}if(a==='edit-event'){if(requireLogin())showEventForm(state.events.find(e=>e.id===id));return}if(a==='new-task'){if(requireLogin())showTaskForm(null);return}if(a==='edit-task'){if(requireLogin())showTaskForm(state.tasks.find(t=>t.id===id));return}
+if(a==='toggle-attendee'||a==='toggle-volunteer'){if(!requireLogin())return;const event=state.events.find(e=>e.id===id),volunteer=a==='toggle-volunteer',joined=volunteer?event.my_volunteering:event.my_attending;await mutation(()=>api(`/api/events/${id}/${volunteer?'volunteers':'attendees'}`,{method:joined?'DELETE':'POST'}),joined?'已取消报名':'报名成功');return}
+if(a==='join-task'||a==='leave-task'||a==='complete-task'){if(!requireLogin())return;const method=a==='leave-task'?'DELETE':'POST',path=a==='complete-task'?`/api/tasks/${id}/complete`:`/api/tasks/${id}/claims`;await mutation(()=>api(path,{method}),a==='complete-task'?'任务已完成':a==='leave-task'?'已退出任务':'已领取任务');return}
+if(a==='edit-profile'){showProfileForm(state.me);return}
+if(a==='edit-avatar'){showAvatarEditor();return}
+if(['avatar-layer','avatar-choice','retry-avatar'].includes(a)){
+  if(!avatarEditor||avatarEditor.saving)return;
+  if(a==='avatar-layer'){
+    if(!avatarEditor.layers.some(l=>l.id===id))return;
+    avatarEditor.active=id;
+  }
+  if(a==='avatar-choice'){
+    const choice=catalog.assets.find(x=>x.id===id&&x.layer===avatarEditor.active);if(!choice)return;
+    avatarEditor.selection[choice.layer]=id;
+    if(catalog.layers.find(l=>l.id===choice.layer)?.code==='body'){
+      const hoodie=catalog.layers.find(l=>l.code==='hoodie'),none=catalog.assets.find(x=>x.layer===hoodie?.id&&x.kind==='none');
+      if(none)avatarEditor.selection[hoodie.id]=none.id;
+    }
+  }
+  const painting=renderAvatarEditor();
+  if(a==='avatar-choice')document.querySelector(`[data-action="avatar-choice"][data-id="${id}"]`)?.focus({preventScroll:true});
+  await painting;return;
+}
+if(a==='save-avatar'){
+  const editor=avatarEditor;if(!editor?.ready||editor.saving||editor.owner!==state.me?.id)return;
+  editor.saving=true;button.disabled=true;
+  try{
+    const profile={nickname:state.me.nickname,bio:state.me.bio,skills:state.me.skills,needs:state.me.needs,card_public:state.me.card_public,avatar:{release:catalog.release,selection:{...editor.selection}}};
+    await api('/api/me',{method:'PATCH',body:profile});
+    if(avatarEditor===editor){close();await refresh();toast('头像已保存')}
+  }catch(error){if(avatarEditor===editor){$('#form-error').textContent=error.message;editor.saving=false;button.disabled=false}}
+  return;
+}
+if(state.me?.role!=='admin')return;
+if(a==='set-member-role'){if(!state.me.is_super_admin)return;const m=state.adminMembers.find(m=>m.id===id);if(!m||m.is_super_admin)return;const role=m.role==='admin'?'member':'admin';if(!confirm(`确定${role==='admin'?'将以下成员设为管理员':'撤销以下成员的管理员身份'}：${m.nickname}？`))return;button.disabled=true;try{await api(`/api/admin/members/${id}/role`,{method:'PATCH',body:{role}});await refresh();toast('成员权限已更新')}catch(error){button.disabled=false;toast(error.message)}return}
+if(a==='bulk-events'){showBulkEvents();return}
+if(a==='admin-tab'){adminTab=button.dataset.tab;render();return}
+if(a==='admin-edit-member'){showProfileForm(state.adminMembers.find(m=>m.id===id),true);return}
+if(a==='invite-member'){const m=state.adminMembers.find(m=>m.id===id);await mutation(()=>api('/api/auth/request',{method:'POST',body:{email:m.email}}),'登录邮件已提交');return}
+if(a==='toggle-member'){const m=state.adminMembers.find(m=>m.id===id),status=m.status==='disabled'?'active':'disabled';if(!confirm(`确定${status==='disabled'?'停用':'启用'} ${m.nickname} 的账号吗？`))return;await mutation(()=>api(`/api/admin/members/${id}/status`,{method:'PATCH',body:{status}}),'成员状态已更新');return}
+if(a==='enroll-device'){try{const result=await api(`/api/admin/members/${id}/devices`,{method:'POST'});modal(`<h2 id="dialog-title">设备令牌已签发</h2><p class="notice">令牌仅显示一次。请在安全环境中写入对应设备，勿截图或转发。</p><label class="field">设备 ID<input readonly value="${esc(result.device_id)}"></label><label class="field">设备令牌<textarea readonly>${esc(result.token)}</textarea></label><p class="private-note">设备丢失时应立即撤销该令牌。</p>`)}catch(error){toast(error.message)}return}
+if(a==='list-devices'){await showDevices(id);return}
+if(a==='revoke-device'){if(!confirm('确定撤销这台设备的登录权限吗？'))return;await api(`/api/admin/devices/${id}`,{method:'DELETE'});await showDevices(button.dataset.memberId);toast('设备权限已撤销');return}
+if(a==='roster'){try{await showRoster(id)}catch(error){toast(error.message)}return}if(a==='event-audit'){try{await showAudit(id)}catch(error){toast(error.message)}return}if(a==='set-pin'){showPin(id);return}
+if(a==='toggle-official'){const e=state.events.find(e=>e.id===id);await mutation(()=>api(`/api/admin/events/${id}`,{method:'PATCH',body:{official:!e.official}}),'官方标记已更新');return}
+if(a==='set-event-status'){const status=button.dataset.status;if(status==='rejected'||status==='cancelled'){showReason(id,status);return}await mutation(()=>api(`/api/admin/events/${id}`,{method:'PATCH',body:{status}}),'活动状态已更新');return}
+}
+document.addEventListener('click',event=>{const button=event.target.closest('[data-action]');if(button){event.preventDefault();performAction(button).catch(error=>toast(error.message))}});
+document.addEventListener('submit',async event=>{const form=event.target;if(!['login-request-form','login-code-form','profile-form','event-form','task-form','import-form','event-status-form','pin-form'].includes(form.id))return;event.preventDefault();if(form.dataset.busy)return;form.dataset.busy='1';const data=new FormData(form);
+try{
+if(form.id==='login-request-form'){const email=String(data.get('email')).trim();await api('/api/auth/request',{method:'POST',body:{email}});showCode(email)}
+else if(form.id==='login-code-form'){await api('/api/auth/verify',{method:'POST',body:{email:form.dataset.email,code:String(data.get('code')).trim()}});close();await refresh();location.hash='#me';toast('登录成功')}
+else if(form.id==='profile-form'){const body={nickname:String(data.get('nickname')).trim(),bio:String(data.get('bio')).trim(),skills:String(data.get('skills')).trim(),needs:String(data.get('needs')).trim(),card_public:data.has('card_public')};if(form.dataset.admin!=='1')body.avatar=state.me.avatar||{};await api(form.dataset.admin==='1'?`/api/admin/members/${form.dataset.id}`:'/api/me',{method:'PATCH',body});close();await refresh();toast('资料已保存')}
+else if(form.id==='event-form'){if(form._coverReading)throw new Error('请等待封面读取完成');if(form._coverInvalid){$('#event-cover-file').focus();throw new Error('请重新选择有效的封面，或点击移除封面');}const start=new Date(String(data.get('start'))+'+08:00').getTime()/1000,end=new Date(String(data.get('end'))+'+08:00').getTime()/1000;if(!Number.isInteger(start)||!Number.isInteger(end)||end<=start)throw new Error('结束时间应晚于开始时间');const body={title:String(data.get('title')).trim(),description:String(data.get('description')).trim(),category:String(data.get('category')).trim(),location:String(data.get('location')).trim(),starts_at:start,ends_at:end,capacity:Number(data.get('capacity')),volunteer_capacity:Number(data.get('volunteer_capacity'))};if(form._coverChange!==undefined)body.cover=form._coverChange;if(state.me.role==='admin')body.official=data.has('official');const existing=form.dataset.id;const result=await api(existing?`/api/events/${existing}`:'/api/events',{method:existing?'PATCH':'POST',body});close();await refresh();location.hash=`#event/${existing||result.event.id}`;toast(state.me.role==='admin'?'活动已保存，可生成海报分享':'活动已提交审核，可先生成草稿海报');if(!existing)showEventPoster(result.event)}
+else if(form.id==='task-form'){const deadline=new Date(String(data.get('deadline'))+'+08:00').getTime()/1000;if(!Number.isInteger(deadline))throw new Error('请填写有效期限');const body={title:String(data.get('title')).trim(),description:String(data.get('description')).trim(),category:String(data.get('category')).trim(),location:String(data.get('location')).trim(),deadline,capacity:Number(data.get('capacity'))};await api(form.dataset.id?`/api/tasks/${form.dataset.id}`:'/api/tasks',{method:form.dataset.id?'PATCH':'POST',body});close();await refresh();location.hash='#tasks';toast('任务已保存')}
+else if(form.id==='import-form'){const lines=String(data.get('rows')).trim().split(/\r?\n/).filter(Boolean);if(lines.length>200)throw new Error('每次最多导入 200 位成员');const members=lines.map((line,index)=>{const parts=line.split(',').map(x=>x.trim());if(parts.length!==2||!parts[0]||!parts[1])throw new Error(`第 ${index+1} 行须为“邮箱,昵称”`);return {email:parts[0],nickname:parts[1]}});const result=await api('/api/admin/members/import',{method:'POST',body:{members}});form.reset();await refresh();toast(`导入 ${result.imported} 位，跳过 ${result.skipped} 位重复成员`)}
+else if(form.id==='event-status-form'){await api(`/api/admin/events/${form.dataset.id}`,{method:'PATCH',body:{status:form.dataset.status,reason:String(data.get('reason')).trim()}});close();await refresh();toast('活动状态已更新')}
+else if(form.id==='pin-form'){await api(`/api/admin/events/${form.dataset.id}/checkin-pin`,{method:'PUT',body:{pin:String(data.get('pin')).trim()}});close();toast('签到口令已保存')}
+}catch(error){formError(form,error)}finally{delete form.dataset.busy}
+});
+window.addEventListener('hashchange',event=>{interestRouteChanged(event);window.scrollTo({top:0,behavior:'instant'});render()});
+refresh().catch(error=>{$('#main').innerHTML=empty('暂时无法连接活动服务，请稍后刷新。');$('#site-status').textContent='连接暂不可用';console.error(error)});
