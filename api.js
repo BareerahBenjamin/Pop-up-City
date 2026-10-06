@@ -181,18 +181,18 @@ async function route(request, env) {
   }
 
   if (method === 'POST' && p === '/api/auth/request') {
-    if (!env.EMAIL || !env.FROM_EMAIL) fail(503, '邮件服务尚未配置');
     const data = await body(request), address = email(data.email), stamp = now();
-    const m = await first(env.DB, "SELECT * FROM members WHERE email=? AND status!='disabled'", address);
-    if (m) {
-      const recent = await first(env.DB, 'SELECT created_at FROM login_challenges WHERE member_id=? ORDER BY created_at DESC LIMIT 1', m.id);
-      if (recent && stamp - recent.created_at < 60) return json({ ok: true, message: '如果邮箱已获邀请，登录邮件即将送达' });
-      const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, '0'), token = randomToken(), id = uid();
-      await run(env.DB, 'INSERT INTO login_challenges(id,member_id,code_hash,link_hash,expires_at,created_at) VALUES(?,?,?,?,?,?)', id, m.id, await mac(env.AUTH_PEPPER, `code:${id}:${code}`), await digest(token), stamp + 600, stamp);
-      try { await sendLogin(env, m, code, token, origin); }
-      catch (error) { await run(env.DB, 'DELETE FROM login_challenges WHERE id=?', id); throw error; }
-    }
-    return json({ ok: true, message: '如果邮箱已获邀请，登录邮件即将送达' });
+    const m = await first(env.DB, 'SELECT * FROM members WHERE email=?', address);
+    if (!m) fail(403, '该邮箱尚未导入，请联系管理员在后台导入你的邮箱和昵称后再登录');
+    if (m.status === 'disabled') fail(403, '该成员账号已停用，请联系管理员');
+    if (!env.EMAIL || !env.FROM_EMAIL) fail(503, '邮件服务尚未配置');
+    const recent = await first(env.DB, 'SELECT created_at FROM login_challenges WHERE member_id=? ORDER BY created_at DESC LIMIT 1', m.id);
+    if (recent && stamp - recent.created_at < 60) return json({ ok: true, message: '登录邮件已发送，请查看邮箱，60 秒后可重新获取' });
+    const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, '0'), token = randomToken(), id = uid();
+    await run(env.DB, 'INSERT INTO login_challenges(id,member_id,code_hash,link_hash,expires_at,created_at) VALUES(?,?,?,?,?,?)', id, m.id, await mac(env.AUTH_PEPPER, `code:${id}:${code}`), await digest(token), stamp + 600, stamp);
+    try { await sendLogin(env, m, code, token, origin); }
+    catch (error) { await run(env.DB, 'DELETE FROM login_challenges WHERE id=?', id); throw error; }
+    return json({ ok: true, message: '登录邮件已发送' });
   }
   if (method === 'POST' && p === '/api/auth/verify') {
     const data = await body(request), address = email(data.email), code = str(data.code, 6, '验证码');
@@ -430,7 +430,7 @@ async function adminRoute(request, env, url, user) {
   if (hardware) return hardware;
   if (method === 'POST' && p === '/api/admin/members/import') {
     const rows = (await body(request)).members; if (!Array.isArray(rows) || rows.length < 1 || rows.length > 200) fail(400, '每次导入 1–200 位成员');
-    const normalized = rows.map(x => ({ email: email(x.email), nickname: str(x.nickname || x.email.split('@')[0], 20, '昵称') }));
+    const normalized = rows.map(x => ({ email: email(x.email), nickname: str(x.nickname, 20, '昵称') }));
     if (new Set(normalized.map(x => x.email)).size !== normalized.length) fail(400, '名单含重复邮箱');
     const statements = normalized.map(x => sql(env.DB, `INSERT OR IGNORE INTO members(id,email,nickname,created_at,updated_at) VALUES(?,?,?,?,?)`, uid(), x.email, x.nickname, now(), now()));
     const result = await env.DB.batch(statements);

@@ -105,7 +105,9 @@ test('HTTP serves original page/assets, health and public events; protects priva
   assert.equal((await f.call('/healthz')).data.mail_configured, false);
   for (const path of ['/.env', '/api.js', '/data/popup-city.sqlite', '/%2e%2e%2f.env', '/missing']) assert.equal((await f.call(path)).status, 404, path);
   assert.equal((await f.call('/api/me')).status, 401);
-  assert.equal((await f.call('/api/auth/request', { method: 'POST', body: { email: 'a@example.test' } })).status, 503);
+  assert.equal((await f.call('/api/auth/request', { method: 'POST', body: { email: 'a@example.test' } })).status, 403);
+  f.seed('invited@example.test');
+  assert.equal((await f.call('/api/auth/request', { method: 'POST', body: { email: 'invited@example.test' } })).status, 503);
   assert.equal((await f.call('/api/auth/request', { method: 'POST', origin: 'https://wrong.test', body: {} })).status, 403);
   assert.equal((await f.call('/api/events', { method: 'POST', body: {} })).status, 401);
 });
@@ -132,6 +134,41 @@ test('one-time email login, separate secure cookie, logout and request throttlin
   const logout = await f.call('/api/auth/logout', { method: 'POST', cookie });
   assert.match(logout.headers.get('set-cookie'), /Secure/);
   assert.equal((await f.call('/api/me', { cookie })).status, 401);
+});
+
+test('login requires administrator import of email and nickname; disabled members cannot request credentials', async t => {
+  const f = await fixture(t); f.seed('admin@example.test', 'admin');
+  const admin = await f.login('admin@example.test');
+  const counts = () => ['members', 'login_challenges', 'sessions'].map(table => f.db.raw.prepare(`SELECT COUNT(*) n FROM ${table}`).get().n);
+  const before = counts(), sent = f.messages.length;
+  const denied = await f.call('/api/auth/request', { method: 'POST', body: { email: ' NewMember@Example.Test ' } });
+  assert.equal(denied.status, 403); assert.match(denied.data.error, /后台导入.*邮箱和昵称/);
+  assert.equal((await f.call('/api/auth/verify', { method: 'POST', body: { email: 'newmember@example.test', code: '123456' } })).status, 400);
+  assert.deepEqual(counts(), before); assert.equal(f.messages.length, sent);
+  assert.equal((await f.call('/api/admin/members/import', { method: 'POST', body: { members: [{ email: 'newmember@example.test', nickname: '新邻居' }] } })).status, 403);
+  for (const nickname of [undefined, '', '   ']) {
+    assert.equal((await f.call('/api/admin/members/import', { method: 'POST', cookie: admin, body: { members: [{ email: 'valid@example.test', nickname: '有效' }, { email: 'newmember@example.test', nickname }] } })).status, 400);
+    assert.deepEqual(counts(), before);
+  }
+  const imported = await f.call('/api/admin/members/import', { method: 'POST', cookie: admin, body: { members: [{ email: ' NewMember@Example.Test ', nickname: '新邻居' }] } });
+  assert.equal(imported.data.imported, 1);
+  const request = await f.call('/api/auth/request', { method: 'POST', body: { email: ' NewMember@Example.Test ' } });
+  assert.equal(request.status, 200); assert.equal(f.messages.length, sent + 1);
+  const code = /验证码是 (\d{6})/.exec(f.messages.at(-1).text)[1];
+  const token = /\/login#([a-f0-9]{64})/.exec(f.messages.at(-1).text)[1];
+  const member = f.db.raw.prepare('SELECT id,nickname FROM members WHERE email=?').get('newmember@example.test');
+  assert.equal(member.nickname, '新邻居');
+  assert.equal((await f.call(`/api/admin/members/${member.id}/status`, { method: 'PATCH', cookie: admin, body: { status: 'disabled' } })).status, 200);
+  const disabledCounts = counts();
+  const disabled = await f.call('/api/auth/request', { method: 'POST', body: { email: 'newmember@example.test' } });
+  assert.equal(disabled.status, 403); assert.match(disabled.data.error, /已停用/);
+  assert.equal((await f.call('/api/auth/verify', { method: 'POST', body: { email: 'newmember@example.test', code } })).status, 400);
+  assert.equal((await f.call('/api/auth/redeem', { method: 'POST', body: { token } })).status, 400);
+  assert.deepEqual(counts(), disabledCounts); assert.equal(f.messages.length, sent + 1);
+  await f.call(`/api/admin/members/${member.id}/status`, { method: 'PATCH', cookie: admin, body: { status: 'active' } });
+  const verified = await f.call('/api/auth/verify', { method: 'POST', body: { email: 'NEWMember@example.test', code } });
+  assert.equal(verified.status, 200);
+  assert.equal((await f.call('/api/me', { cookie: verified.headers.get('set-cookie').split(';')[0] })).data.member.nickname, '新邻居');
 });
 
 test('magic link works once; disabled member cannot redeem a previously issued link', async t => {

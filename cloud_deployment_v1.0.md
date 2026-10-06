@@ -13,7 +13,7 @@
 
 发布包不含本机 `.env`、成员数据库、SMTP密码、设备令牌、SSH密钥、node_modules或Mac运行时。Node与依赖在Linux服务器安装。源码部署不会自动搬迁本机成员、已确认头像或星球数据。
 
-**信心：★★★★★（本地主机与已部署Linux主机）；★★★☆☆（邮件送达与真机）。** 本地及Linux主机43项测试通过；systemd服务、公网HTTPS、桌面／手机首页及登录表单验收通过。本手册仍须按实际目标主机校验，不能直接套用到另一台服务器。
+**信心：★★★★★（本地主机与已部署Linux主机）；★★★☆☆（邮件送达与真机）。** 登录现要求后台先导入邮箱和昵称，未导入／已停用邮箱返回403且不发邮件；本地及Linux主机44项测试通过，桌面／手机登录流程已验收。本手册仍须按实际目标主机校验，不能直接套用到另一台服务器。
 
 ## 1. 准备信息与连接
 
@@ -27,7 +27,7 @@ Mac终端中先修改以下变量，然后在同一个终端按步骤执行。SS
 DEPLOY_IP='YOUR_SERVER_IP'
 DEPLOY_USER='ubuntu'
 DEPLOY_KEY="$HOME/.ssh/YOUR_SERVER_KEY"
-DEPLOY_PACKAGE_DIR='/Users/bareerah/Documents/popup/02_Execution/outputs/cloud_deployment_20261006_v1.3'
+DEPLOY_PACKAGE_DIR='/Users/bareerah/Documents/popup/02_Execution/outputs/cloud_deployment_20261006_v1.4'
 DEPLOY_PACKAGE='herstory-popup-city-20261006-cloud.tar.gz'
 
 cd "$DEPLOY_PACKAGE_DIR"
@@ -215,6 +215,8 @@ curl -fsS https://kunyuan.site/healthz
 画像存储详情见 [RGB565存储契约](rgb565_storage_v1.0.md)。现有2D美术只含B已实现的像素规则，不保证完整3D奖励已全部有2D形象；真机联调须单独验收。
 
 ## 已有云端数据库升级
+
+本次登录限制更新只修改代码，迁移仍为0001–0010。现有云端数据库已通过新代码的只读Schema检查时，直接切换新发布目录并重启本服务即可；不要运行下方迁移命令，也不要重新创建管理员或覆盖配置／数据库。仅当后续版本确实新增迁移时，才执行备份、停机与迁移流程。
 
 不再执行首次建用户、重建配置、生成AUTH_PEPPER或创建管理员。保持旧.env配置、运行时和独立数据目录。按第1–2步校验上传包，再为新发布选择尚不存在的版本目录：
 
