@@ -2,7 +2,7 @@
 
 - **版本：** v1.0
 - **负责人：** 网站／数据库／后台负责人
-- **状态：** 发布包和本地检查已准备；尚未登录云服务器执行
+- **状态：** Linux独立服务与公网HTTPS已验收；SMTP连接认证通过，实际投递及真机待验收
 - **最后更新：** 2026-10-06
 
 ## 交付内容与适用环境
@@ -13,7 +13,7 @@
 
 发布包不含本机 `.env`、成员数据库、SMTP密码、设备令牌、SSH密钥、node_modules或Mac运行时。Node与依赖在Linux服务器安装。源码部署不会自动搬迁本机成员、已确认头像或星球数据。
 
-**信心：★★★★★（本地源码／存储自检）；★★★☆☆（目标主机）。** 后端及持久帧测试通过，systemd/Caddy模板仍须按目标主机校验，不能视为已经上线。
+**信心：★★★★★（本地主机与已部署Linux主机）；★★★☆☆（邮件送达与真机）。** 本地及Linux主机43项测试通过；systemd服务、公网HTTPS、桌面／手机首页及登录表单验收通过。本手册仍须按实际目标主机校验，不能直接套用到另一台服务器。
 
 ## 1. 准备信息与连接
 
@@ -27,7 +27,7 @@ Mac终端中先修改以下变量，然后在同一个终端按步骤执行。SS
 DEPLOY_IP='YOUR_SERVER_IP'
 DEPLOY_USER='ubuntu'
 DEPLOY_KEY="$HOME/.ssh/YOUR_SERVER_KEY"
-DEPLOY_PACKAGE_DIR='/Users/bareerah/Documents/popup/02_Execution/outputs/cloud_deployment_20261006_v1.2'
+DEPLOY_PACKAGE_DIR='/Users/bareerah/Documents/popup/02_Execution/outputs/cloud_deployment_20261006_v1.3'
 DEPLOY_PACKAGE='herstory-popup-city-20261006-cloud.tar.gz'
 
 cd "$DEPLOY_PACKAGE_DIR"

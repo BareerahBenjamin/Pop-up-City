@@ -2,7 +2,7 @@
 
 - **版本：** v1.0
 - **负责人：** Herstory 项目维护者
-- **状态：** 第一版 Node.js 网站源码；生产部署与真实邮件投递需单独验收
+- **状态：** kunyuan.site 的 HTTPS 部署与 SMTP 连接认证已通过；真实邮件送达与硬件待验收
 - **最后更新：** 2026-10-06
 
 面向 Herstory 社区的活动、成员和共同生活管理网站。采用 **Node.js + SQLite + 原生 JavaScript/CSS**，同一服务提供页面与 API，活动页面无需额外前端构建；星球源码修改后运行 `npm run build:planet`。
@@ -53,7 +53,7 @@ npm start
 
 项目发件地址为 `info@0xherstory.cn`，SMTP 必须允许此地址发信。465 使用 SSL；587 使用 STARTTLS 时将 `SMTP_SECURE=false`。客户端专用密码仅写入受保护的本地配置，不提交 GitHub。
 
-`/healthz` 的 `mail_configured` 仅表示参数存在，不证明认证或投递成功。发信失败返回 503 和明确提示；SMTP 认证、收件箱送达和垃圾邮件归类需单独验证。截至本版整理，真实 SMTP 认证故障尚未确认恢复。
+`/healthz` 的 `mail_configured` 仅表示参数存在，不证明认证或投递成功。2026-10-06 云端 SMTP 连接与认证已验证成功，公网 [kunyuan.site](https://kunyuan.site) 返回200、健康检查正常。尚未发送测试邮件；收件箱送达和垃圾邮件归类仍需由真实登录验证。发信失败返回503和明确提示。
 
 ## 项目结构
 
