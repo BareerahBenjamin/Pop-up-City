@@ -1,0 +1,16 @@
+.host-growth-note{margin:0;padding:10px 18px;background:#f2efde;color:#454139;font:12px/1.6 system-ui,sans-serif;text-align:center;position:relative;z-index:5}
+.app{height:calc(100dvh - 58px);min-height:360px}
+.bottom-nav button:disabled{opacity:.45;cursor:default}
+@media(max-width:420px){.host-growth-note{font-size:11px;padding:8px 12px}}
+html,body{height:100%;overflow:hidden}
+body{display:flex;flex-direction:column}
+.host-growth-note{flex:none}
+.app{display:flex;flex-direction:column;flex:1;width:100%;height:auto;min-height:0}
+.app>.topbar{flex:none;height:64px;padding-top:0}
+.app>main{flex:1;min-height:0;position:relative}
+.app #space-view{height:100%;min-height:0}
+.app>.bottom-nav{position:relative;flex:none;left:auto;bottom:auto;transform:none;margin:8px auto 12px}
+body[data-tab=field]::before,body[data-tab=friends]::before{background-image:none}
+.host-offscreen *,.host-offscreen *::before,.host-offscreen *::after{animation-play-state:paused!important}
+
+#growth-summary{position:fixed;width:min(900px,calc(100% - 24px));max-height:calc(100dvh - 40px);margin:auto;padding:24px;color:#263a2e;background:#f5f5e9;border:1px solid #cbd3bd;border-radius:16px;font:15px/1.7 system-ui;overflow:auto}#growth-summary::backdrop{background:#17211ab3}#growth-summary h2{font-size:20px}#growth-summary ul{padding-left:22px;columns:2}#growth-summary details ul{columns:1}.growth-close{min-height:44px;float:right;padding:6px 12px;border:1px solid #bfc6b2;border-radius:24px}.mine-footer>button:last-child{min-height:44px;padding:8px 16px;text-decoration:underline}@media(max-width:600px){#growth-summary ul{columns:1}}

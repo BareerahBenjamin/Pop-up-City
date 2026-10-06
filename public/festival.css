@@ -334,3 +334,59 @@ p { text-wrap: pretty; }
 .agenda-list .interest-feedback { grid-column: 1 / -1; }
 .agenda-list li { scroll-margin-block: var(--space-6); }
 .agenda-list .agenda-highlight { background: var(--color-blush); box-shadow: inset 3px 0 var(--color-accent); padding-inline: var(--space-3); }
+
+/* Fixed site bars. Measured offsets also keep focused/scrolled content clear. */
+:root { --site-header-height: 190px; --site-footer-height: 100px; }
+html:has(.site-layout) {
+  scroll-padding-top: calc(var(--site-header-height) + var(--space-4));
+  scroll-padding-bottom: calc(var(--site-footer-height) + var(--space-4));
+}
+.site-layout { padding-block: var(--site-header-height) var(--site-footer-height); }
+.site-layout .skip { position: fixed; }
+.site-chrome {
+  position: fixed; inset: 0 0 auto; z-index: 20;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  background: var(--color-paper);
+  border-bottom: 1px solid var(--line);
+}
+.site-chrome .festival-header { border-bottom: 0; }
+.site-layout .festival-footer {
+  position: fixed; inset: auto 0 0; z-index: 20;
+  max-width: none; width: 100%; margin: 0;
+  padding: var(--space-2) var(--space-4) calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
+  padding-left: max(var(--space-4), env(safe-area-inset-left, 0px));
+  padding-right: max(var(--space-4), env(safe-area-inset-right, 0px));
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2) var(--space-3); align-items: center;
+  background: var(--color-paper);
+}
+.site-layout .footer-brand {
+  grid-column: 1 / -1; flex-direction: row; align-items: center; gap: var(--space-3);
+  font-size: var(--text-xs); width: fit-content;
+}
+.site-layout .footer-brand img { width: 92px; }
+.site-layout .footer-brand span { font-size: .6875rem; }
+.site-layout .festival-footer p { align-self: start; line-height: 1.6; white-space: nowrap; }
+.site-layout .footer-copy { font-size: clamp(.75rem, 3.4vw, .875rem); }
+.site-layout .footer-date { font-size: clamp(.6875rem, 3vw, .8125rem); text-align: right; font-variant-numeric: tabular-nums; }
+.site-layout #toast { bottom: calc(var(--site-footer-height) + var(--space-4)); }
+@media (min-width: 40rem) {
+  .site-layout .festival-footer {
+    padding: var(--space-3) max(var(--space-8), calc((100% - var(--page-width)) / 2 + var(--space-8))) calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+    padding-left: max(var(--space-8), calc((100% - var(--page-width)) / 2 + var(--space-8)), env(safe-area-inset-left, 0px));
+    padding-right: max(var(--space-8), calc((100% - var(--page-width)) / 2 + var(--space-8)), env(safe-area-inset-right, 0px));
+    grid-template-columns: minmax(0, 1fr) auto auto; gap: var(--space-6);
+  }
+  .site-layout .footer-brand { grid-column: auto; flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+  .site-layout .footer-brand img { width: 112px; }
+  .site-layout .footer-copy, .site-layout .footer-date { font-size: .875rem; }
+}
+@media (max-width: 39.99rem) {
+  .site-chrome .live-bar { font-size: clamp(.625rem, 3vw, .75rem); gap: var(--space-2); }
+  .site-chrome .festival-header { padding-top: var(--space-3); row-gap: var(--space-2); }
+  .site-chrome .brand-logo { width: 128px; }
+  .site-chrome .wordmark span { font-size: .625rem; }
+  .site-chrome nav a { padding-block: var(--space-2); }
+}

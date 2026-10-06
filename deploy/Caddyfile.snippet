@@ -1,6 +1,10 @@
-# 仅为新增站点片段；禁止用这个文件覆盖现有 Caddyfile。
-# 与 PUBLIC_ORIGIN=https://kunyuan.site 保持一致。
+# Add this site to the existing Caddy configuration; do not replace the whole file.
+# Keep PUBLIC_ORIGIN=https://kunyuan.site in sync with this hostname.
 kunyuan.site {
-    encode zstd gzip
+    # Hardware downloads stay as uncompressed RGB565 bytes, including 206 responses.
+    @website {
+        not path /api/device/*
+    }
+    encode @website zstd gzip
     reverse_proxy 127.0.0.1:3300
 }

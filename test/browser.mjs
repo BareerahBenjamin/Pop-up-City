@@ -27,7 +27,7 @@ try{
  await page.reload();const heart=page.locator(`.event-card [data-id="${futureId}"]`);await heart.click();await page.locator(`.upcoming-agenda a[href="#event/${futureId}"]`).waitFor();assert.equal(new URL(page.url()).hash,'');
  await page.reload();await page.locator(`.upcoming-agenda a[href="#event/${futureId}"]`).waitFor();await page.locator(`.upcoming-agenda [data-id="${futureId}"]`).click();await page.waitForFunction(id=>!document.querySelector(`.upcoming-agenda a[href="#event/${id}"]`),futureId);
  await page.locator('#calendar-title').scrollIntoViewIfNeeded();await page.screenshot({path:`${out}/calendar-desktop.png`});
- await page.goto(`${origin}/#me`);await page.getByRole('button',{name:'制作头像',exact:true}).click();await page.waitForFunction(()=>avatarEditor?.ready);
+ await page.goto(`${origin}/#me`);await page.getByRole('button',{name:'设置头像与资料',exact:true}).click();await page.waitForFunction(()=>avatarEditor?.ready);
  await page.locator('[data-action="avatar-layer"][data-id="hst_layer_hoodie"]').click();await page.locator('[data-action="avatar-choice"][data-id="hst_ast_0051"]').click();await page.waitForFunction(()=>avatarEditor?.ready);
  await page.locator('[data-action="avatar-layer"][data-id="hst_layer_body"]').click();
  await page.evaluate(()=>{for(const id of ['hst_ast_0020','hst_ast_0031','hst_ast_0033'])document.querySelector(`[data-action="avatar-choice"][data-id="${id}"]`).click()});
@@ -36,12 +36,12 @@ try{
  const before=await page.locator('#avatar-preview').evaluate(c=>c.toDataURL());
  const expected=await page.evaluate(()=>avatarData({release:catalog.release,selection:{...avatarEditor.selection}}));assert.equal(before,expected);
  await page.screenshot({path:`${out}/avatar-desktop.png`});
- await page.getByRole('button',{name:'保存头像',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('#modal').open);await page.reload();await page.locator('.profile-head .avatar img').waitFor();assert.equal(await page.locator('.profile-head .avatar img').getAttribute('src'),before);
- await page.getByRole('button',{name:'制作头像',exact:true}).click();await page.waitForFunction(()=>avatarEditor?.ready);assert.deepEqual(await page.evaluate(()=>({...avatarEditor.selection})),selection);
- await page.locator('[data-action="avatar-layer"][data-id="hst_layer_body"]').click();
- await page.evaluate(()=>{window.originalDecode=Image.prototype.decode;Image.prototype.decode=function(){return this.src===catalog.assets.find(a=>a.id==='hst_ast_0032').image?Promise.reject(new Error('test image failure')):window.originalDecode.call(this)}});
- await page.locator('[data-action="avatar-choice"][data-id="hst_ast_0032"]').click();await page.locator('[data-action="retry-avatar"]:not([hidden])').waitFor();assert.equal(await page.getByRole('button',{name:'保存头像',exact:true}).isDisabled(),true);
- await page.evaluate(()=>{Image.prototype.decode=window.originalDecode});await page.locator('[data-action="retry-avatar"]').click();await page.waitForFunction(()=>avatarEditor?.ready);await page.getByRole('button',{name:'取消',exact:true}).click();
+ // Finish the one-time combined setup; avatar re-editing is intentionally unavailable afterward.
+ await page.getByRole('button',{name:'下一步：填写资料',exact:true}).click();
+ await page.getByRole('button',{name:'确认头像并保存资料',exact:true}).click();
+ await page.waitForFunction(()=>!document.querySelector('#modal').open);await page.reload();
+ await page.locator('.profile-head .avatar img').waitFor();assert.equal(await page.locator('.profile-head .avatar img').getAttribute('src'),before);
+ assert.equal(await page.locator('[data-action="edit-avatar"]').count(),0);
  await page.goto(`${origin}/#admin`);await page.locator(`[data-action="set-member-role"][data-id="${neighbor.id}"]`).click();await page.waitForFunction(id=>state.adminMembers.find(m=>m.id===id)?.role==='admin',neighbor.id);
  const otherContext=await browser.newContext();await otherContext.addCookies([{name:'popup_city_session',value:neighbor.token,url:origin}]);const other=await otherContext.newPage();await other.goto(`${origin}/#admin`);await other.getByRole('heading',{name:'让每一位成员顺利加入。'}).waitFor();assert.equal(await other.locator('[data-action="set-member-role"]').count(),0);
  await page.locator(`[data-action="set-member-role"][data-id="${neighbor.id}"]`).click();await page.waitForFunction(id=>state.adminMembers.find(m=>m.id===id)?.role==='member',neighbor.id);
@@ -52,7 +52,7 @@ try{
  await page.setViewportSize({width:375,height:812});await page.goto(origin);await page.locator('#calendar-title').waitFor();
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.ok(await page.locator('.card-body .meta').first().evaluate(e=>parseFloat(getComputedStyle(e).fontSize)>=16));
  await page.locator('#calendar-title').scrollIntoViewIfNeeded();await page.screenshot({path:`${out}/calendar-mobile.png`});
- await page.goto(`${origin}/#me`);await page.getByRole('button',{name:'制作头像',exact:true}).click();await page.waitForFunction(()=>avatarEditor?.ready);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:`${out}/avatar-mobile.png`});await page.getByRole('button',{name:'取消',exact:true}).click();
+ await page.goto(`${origin}/#me`);await page.locator('.profile-lock-note').waitFor();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:`${out}/avatar-mobile.png`});
  await page.goto(origin);await page.locator('.event-card').first().scrollIntoViewIfNeeded();
  const card=page.locator('.event-card').first();const box=await card.boundingBox(),heartBox=await card.locator('.interest-heart').boundingBox();assert.ok(heartBox.y>=box.y&&heartBox.y+heartBox.height<=box.y+box.height);
  const hostBox=await card.locator('.host').boundingBox();assert.ok(box.y+box.height-hostBox.y-hostBox.height<30);await page.screenshot({path:`${out}/event-card-mobile.png`});
@@ -66,5 +66,5 @@ try{
  await page.locator('#bulk-commit').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);assert.equal(db.raw.prepare("SELECT COUNT(*) n FROM events WHERE title LIKE '批量前端%' AND official=1").get().n,2);
  // Creating an activity immediately offers its poster; cover-free creation remains supported.
  await page.goto(origin);await page.getByRole('button',{name:'发起一个活动 ＋',exact:true}).click();await page.locator('[name="title"]').fill('新活动海报流程');await page.locator('[name="start"]').fill('2026-10-20T10:00');await page.locator('[name="end"]').fill('2026-10-20T12:00');await page.locator('[name="location"]').fill('测试空间');await page.locator('#event-form [name="description"]').fill('测试说明');await page.getByRole('button',{name:'提交活动',exact:true}).click();await page.locator('#event-poster').waitFor();await page.waitForFunction(()=>Boolean(posterBlob));
- assert.equal(db.raw.prepare('SELECT starts_at FROM events WHERE title=?').get('新活动海报流程').starts_at,Date.parse('2026-10-20T10:00:00+08:00')/1000);assert.deepEqual(errors,[]);await checkInterestFeedback({browser,origin,db,member:neighbor,now,out});console.log('PASSED: browser avatar/rapid switching/failure/retry/persistence, role delegation, day/3-day/week calendar, interests, poster/QR/download, create-to-poster, 375px layout.');console.log(`Screenshots: ${out}`);
+ assert.equal(db.raw.prepare('SELECT starts_at FROM events WHERE title=?').get('新活动海报流程').starts_at,Date.parse('2026-10-20T10:00:00+08:00')/1000);assert.deepEqual(errors,[]);await checkInterestFeedback({browser,origin,db,member:neighbor,now,out});console.log('PASSED: browser avatar/rapid switching/one-time finalization/persistence, role delegation, day/3-day/week calendar, interests, poster/QR/download, create-to-poster, 375px layout.');console.log(`Screenshots: ${out}`);
 }finally{await browser?.close();await new Promise(resolve=>server.close(resolve));db.close()}

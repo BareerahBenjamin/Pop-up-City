@@ -1,3 +1,7 @@
+import { PlanetGrowthError, growthTransaction, activatePlanetGrowth, configurePlanetEvent, reviewPlanetRole, correctPlanetFact, planetGrowthAdmin } from './planet-growth.js';
+import { planetSnapshot, planetSnapshotInTransaction, planetDocument, completePlanetOnboarding, loginDestination } from './planet.js';
+import { validFinalAvatar } from './profile.js';
+import { hardwareRoute, hardwareAdminRoute, HardwareError } from './hardware.js';
 import { changeMemberRole } from './roles.js';
 import QRCode from 'qrcode';
 import { prepareCover, bodyLimit } from './covers.js';
@@ -74,7 +78,7 @@ async function deviceFromBearer(request, env) {
 }
 function profile(m, self = false) {
   const data = { id: m.id, nickname: m.nickname, bio: m.bio, skills: m.skills, needs: m.needs, avatar: JSON.parse(m.avatar_json || '{}') };
-  if (self) Object.assign(data, { email: m.email, role: m.role, is_super_admin: Boolean(m.is_super_admin), status: m.status, card_public: Boolean(m.card_public) });
+  if (self) Object.assign(data, { email: m.email, role: m.role, is_super_admin: Boolean(m.is_super_admin), status: m.status, card_public: Boolean(m.card_public), avatar_locked: m.profile_completed_at != null, profile_locked: false });
   return data;
 }
 function validateProfile(data) {
@@ -111,9 +115,12 @@ function coverStatements(db, eventId, cover) {
     ON CONFLICT(event_id) DO UPDATE SET version=excluded.version,image=excluded.image`, eventId, uid(), cover)];
 }
 async function connectionsFor(db, memberId) {
-  return all(db, `SELECT c.id,c.connected_at,m.id member_id,m.nickname FROM connections c
+  return all(db, `SELECT MIN(c.id) id,MIN(c.connected_at) connected_at,m.id member_id,m.nickname FROM
+    (SELECT id,from_member_id,to_member_id,connected_at FROM connections UNION ALL
+      SELECT id,member_a_id,member_b_id,established_at FROM friendships) c
     JOIN members m ON m.id=CASE WHEN c.from_member_id=? THEN c.to_member_id ELSE c.from_member_id END
-    WHERE c.from_member_id=? OR c.to_member_id=? ORDER BY c.connected_at DESC`, memberId, memberId, memberId);
+    WHERE (c.from_member_id=? OR c.to_member_id=?) AND m.status!='disabled'
+    GROUP BY m.id,m.nickname ORDER BY connected_at DESC`, memberId, memberId, memberId);
 }
 async function audit(db, eventId, actorId, action, reason = '') { await run(db, 'INSERT INTO event_audit VALUES(?,?,?,?,?,?)', uid(), eventId, actorId, action, reason, now()); }
 function validateEvent(data) {
@@ -139,7 +146,7 @@ async function sendLogin(env, member, code, token, origin) {
 async function issueSession(env, memberId) {
   const token = randomToken(), stamp = now();
   await run(env.DB, 'INSERT INTO sessions VALUES(?,?,?,?)', await digest(token), memberId, stamp + 604800, stamp);
-  return json({ ok: true }, 200, { 'Set-Cookie': `popup_city_session=${token}; Path=/; HttpOnly;${env.SECURE_COOKIES ? ' Secure;' : ''} SameSite=Lax; Max-Age=604800` });
+  return json({ ok: true, next: loginDestination(env.DB, memberId) }, 200, { 'Set-Cookie': `popup_city_session=${token}; Path=/; HttpOnly;${env.SECURE_COOKIES ? ' Secure;' : ''} SameSite=Lax; Max-Age=604800` });
 }
 async function consumeChallenge(env, challenge, condition) {
   if (!challenge || challenge.used_at || challenge.expires_at <= now() || challenge.attempts >= 5 || !condition) fail(400, '验证码或链接无效，请重新获取');
@@ -156,7 +163,7 @@ async function route(request, env) {
     await first(env.DB, 'SELECT COUNT(*) AS n FROM schema_migrations');
     return json({ status: 'ok', mail_configured: Boolean(env.EMAIL && env.FROM_EMAIL) });
   }
-  if (method === 'GET' && p === '/login') return new Response(`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Herstory 登录 · 科技碰瓷节</title><link rel="stylesheet" href="/tokens.css"><link rel="stylesheet" href="/site.css"><link rel="stylesheet" href="/festival.css"></head><body class="login-page"><main><a href="/" aria-label="返回活动首页"><img class="login-brand" src="/assets/series/herstory-logo.png" alt="Herstory" width="586" height="149"></a><h1>Herstory Pop-up City</h1><p id="result" role="status">点击下方按钮完成邮箱登录。</p><button class="btn" id="login">确认登录</button></main><script>document.querySelector('#login').onclick=async()=>{const token=location.hash.slice(1);if(!/^[a-f0-9]{64}$/.test(token)){document.querySelector('#result').textContent='登录链接无效，请重新获取。';return}const r=await fetch('/api/auth/redeem',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});location.hash='';if(r.ok){location.replace('/#me');return}document.querySelector('#result').textContent='链接已过期或已使用，请重新获取。';document.querySelector('#login').hidden=true}</script></body></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
+  if (method === 'GET' && p === '/login') return new Response(`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Herstory 登录 · 科技碰瓷节</title><link rel="stylesheet" href="/tokens.css"><link rel="stylesheet" href="/site.css"><link rel="stylesheet" href="/festival.css"></head><body class="login-page"><main><a href="/" aria-label="返回活动首页"><img class="login-brand" src="/assets/series/herstory-logo.png" alt="Herstory" width="586" height="149"></a><h1>Herstory Pop-up City</h1><p id="result" role="status">点击下方按钮完成邮箱登录。</p><button class="btn" id="login">确认登录</button></main><script>document.querySelector('#login').onclick=async()=>{const token=location.hash.slice(1);if(!/^[a-f0-9]{64}$/.test(token)){document.querySelector('#result').textContent='登录链接无效，请重新获取。';return}const r=await fetch('/api/auth/redeem',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});location.hash='';if(r.ok){const data=await r.json();location.replace(data.next||'/#me');return}document.querySelector('#result').textContent='链接已过期或已使用，请重新获取。';document.querySelector('#login').hidden=true}</script></body></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
   if (!env.AUTH_PEPPER || env.AUTH_PEPPER.length < 32) fail(503, '服务尚未配置密钥');
   const origin = env.PUBLIC_ORIGIN ? new URL(env.PUBLIC_ORIGIN).origin : url.origin;
   if (method !== 'GET' && method !== 'HEAD' && !p.startsWith('/api/device/')) {
@@ -164,6 +171,15 @@ async function route(request, env) {
   }
   if (p.startsWith('/api/device/')) return deviceRoute(request, env, url);
   const user = await memberFromCookie(request, env);
+  if (method === 'GET' && p === '/planet') {
+    if (!user) return new Response('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><p>请先登录，再进入你的星球。</p><a href="/#planet" target="_top">返回网站登录</a></html>', { status: 401, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Frame-Options': 'SAMEORIGIN', 'Content-Security-Policy': "frame-ancestors 'self'" } });
+    return new Response(planetDocument(planetSnapshot(env.DB, user.id), url.searchParams.get('view')), { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'private, no-store', 'X-Frame-Options': 'SAMEORIGIN', 'Content-Security-Policy': "frame-ancestors 'self'; base-uri 'none'; object-src 'none'" } });
+  }
+  if (method === 'GET' && p === '/api/herstory/planet-state') return json(planetSnapshot(env.DB, requireMember(user).id));
+  if (method === 'POST' && p === '/api/herstory/planet-onboarding') {
+    requireMember(user); completePlanetOnboarding(env.DB, user.id); return json({ ok: true });
+  }
+
   if (method === 'POST' && p === '/api/auth/request') {
     if (!env.EMAIL || !env.FROM_EMAIL) fail(503, '邮件服务尚未配置');
     const data = await body(request), address = email(data.email), stamp = now();
@@ -207,8 +223,18 @@ async function route(request, env) {
     return json({ checkins: await all(env.DB, 'SELECT c.event_id,e.title,c.checked_at FROM checkins c JOIN events e ON e.id=c.event_id WHERE c.member_id=? ORDER BY c.checked_at DESC', user.id), connections: await connectionsFor(env.DB, user.id) });
   }
   if (method === 'PATCH' && p === '/api/me') {
-    requireMember(user); const d = validateProfile(await body(request));
-    await run(env.DB, 'UPDATE members SET nickname=?,bio=?,skills=?,needs=?,avatar_json=?,card_public=?,updated_at=? WHERE id=?', d.nickname, d.bio, d.skills, d.needs, d.avatar, d.cardPublic === undefined ? user.card_public : Number(d.cardPublic), now(), user.id);
+    requireMember(user);
+    const input = await body(request);
+    if (user.profile_completed_at != null) {
+      if (input.avatar !== undefined || input.finalize !== undefined) fail(409, '头像已确认，不能修改或重新生成');
+      const d = validateProfile({ nickname: user.nickname, bio: user.bio, skills: user.skills, needs: user.needs, card_public: Boolean(user.card_public), ...input });
+      await run(env.DB, 'UPDATE members SET nickname=?,bio=?,skills=?,needs=?,card_public=?,updated_at=? WHERE id=?', d.nickname, d.bio, d.skills, d.needs, Number(d.cardPublic), now(), user.id);
+      return json({ member: profile(await first(env.DB, 'SELECT * FROM members WHERE id=?', user.id), true) });
+    }
+    if (input.finalize !== true || !validFinalAvatar(input.avatar)) fail(400, '请完成头像与个人资料，并确认一次性保存');
+    const d = validateProfile(input), stamp = now();
+    const result = await run(env.DB, 'UPDATE members SET nickname=?,bio=?,skills=?,needs=?,avatar_json=?,card_public=?,updated_at=?,profile_completed_at=? WHERE id=? AND profile_completed_at IS NULL', d.nickname, d.bio, d.skills, d.needs, d.avatar, d.cardPublic === undefined ? user.card_public : Number(d.cardPublic), stamp, stamp, user.id);
+    if (!result.meta.changes) fail(409, '头像已确认，不能修改或重新生成');
     return json({ member: profile(await first(env.DB, 'SELECT * FROM members WHERE id=?', user.id), true) });
   }
   if (method === 'GET' && p === '/api/members') {
@@ -388,6 +414,20 @@ async function route(request, env) {
 }
 async function adminRoute(request, env, url, user) {
   const p = url.pathname, method = request.method;
+  if (p === '/api/admin/planet/growth' && method === 'GET') return json(planetGrowthAdmin(env.DB));
+  if (p.startsWith('/api/admin/planet/growth/') && ['POST','PUT'].includes(method)) {
+    const data = await body(request);
+    const handlers = { activate: () => activatePlanetGrowth(env.DB,user), events: () => configurePlanetEvent(env.DB,user,data), reviews: () => reviewPlanetRole(env.DB,user,data), corrections: () => correctPlanetFact(env.DB,user,data) };
+    const handler = handlers[p.slice('/api/admin/planet/growth/'.length)]; if (!handler) fail(404,'成长接口不存在');
+    return json(growthTransaction(env.DB, () => {
+      const result = handler();
+      const ids = data.member_id ? [data.member_id] : env.DB.raw.prepare('SELECT member_id FROM member_planets UNION SELECT member_id FROM checkins').all().map(r=>r.member_id);
+      for (const memberId of ids) if (env.DB.raw.prepare("SELECT 1 FROM members WHERE id=? AND status!='disabled'").get(memberId)) planetSnapshotInTransaction(env.DB,memberId);
+      return result;
+    }));
+  }
+  const hardware = await hardwareAdminRoute(request, env, url, user, body);
+  if (hardware) return hardware;
   if (method === 'POST' && p === '/api/admin/members/import') {
     const rows = (await body(request)).members; if (!Array.isArray(rows) || rows.length < 1 || rows.length > 200) fail(400, '每次导入 1–200 位成员');
     const normalized = rows.map(x => ({ email: email(x.email), nickname: str(x.nickname || x.email.split('@')[0], 20, '昵称') }));
@@ -408,6 +448,7 @@ async function adminRoute(request, env, url, user) {
     const old = await first(env.DB, 'SELECT * FROM members WHERE id=?', memberEdit[1]); if (!old) fail(404, '成员不存在');
     if (old.is_super_admin && old.id !== user.id) fail(403, '不能修改超级管理员资料');
     const input = await body(request);
+    if (input.avatar !== undefined || input.finalize !== undefined) fail(old.profile_completed_at != null ? 409 : 403, '头像只能由成员首次确认，管理员不能修改或重新生成');
     const d = validateProfile({ nickname: old.nickname, bio: old.bio, skills: old.skills, needs: old.needs, avatar: JSON.parse(old.avatar_json || '{}'), card_public: Boolean(old.card_public), ...input });
     await run(env.DB, 'UPDATE members SET nickname=?,bio=?,skills=?,needs=?,avatar_json=?,card_public=?,updated_at=? WHERE id=?', d.nickname, d.bio, d.skills, d.needs, d.avatar, Number(d.cardPublic), now(), old.id);
     return json({ member: profile(await first(env.DB, 'SELECT * FROM members WHERE id=?', old.id), true) });
@@ -454,6 +495,8 @@ async function adminRoute(request, env, url, user) {
 }
 async function deviceRoute(request, env, url) {
   const d = await deviceFromBearer(request, env), p = url.pathname, method = request.method;
+  const hardware = await hardwareRoute(request, env, url, d, body);
+  if (hardware) return hardware;
   if (method === 'GET' && p === '/api/device/me') return json({ member_id: d.member_id, nickname: d.nickname, bio: d.card_public ? d.bio : '', avatar: JSON.parse(d.avatar_json || '{}') });
   if (method === 'GET' && p === '/api/device/events') return json({ events: await all(env.DB, `SELECT e.id,e.title,e.starts_at,e.ends_at,e.location FROM events e JOIN event_registrations r ON r.event_id=e.id WHERE r.member_id=? AND r.kind='attendee' AND e.status='published' ORDER BY e.starts_at`, d.member_id) });
   if (method === 'GET' && p === '/api/device/records') return json({ checkins: await all(env.DB, 'SELECT event_id,checked_at FROM checkins WHERE member_id=? ORDER BY checked_at DESC', d.member_id), connections: await connectionsFor(env.DB, d.member_id) });
@@ -465,8 +508,8 @@ async function deviceRoute(request, env, url) {
     const failures = await first(env.DB, 'SELECT COUNT(*) n FROM device_failed_codes WHERE device_id=? AND attempted_at>?', d.id, stamp - 600);
     if (failures.n >= 10) fail(429, '尝试次数过多，请稍后再试');
     if (await mac(env.AUTH_PEPPER, `venue:${eventId}:${pin}`) !== e.venue_pin_hash) { await run(env.DB, 'INSERT INTO device_failed_codes VALUES(?,?)', d.id, stamp); fail(403, '签到口令不正确'); }
-    await run(env.DB, 'INSERT OR IGNORE INTO checkins VALUES(?,?,?,?,?)', eventId, d.member_id, d.id, stamp, requestId);
-    return json({ status: 'checked_in', event_id: eventId });
+    const snapshot=growthTransaction(env.DB,()=>{env.DB.raw.prepare('INSERT OR IGNORE INTO checkins VALUES(?,?,?,?,?)').run(eventId,d.member_id,d.id,stamp,requestId);return planetSnapshotInTransaction(env.DB,d.member_id);});
+    return json({ status: 'checked_in', event_id: eventId, planet_revision:snapshot.revision,growth_status:snapshot.integration.growthStatus });
   }
   if (method === 'POST' && p === '/api/device/social-code') {
     await body(request); const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, '0');
@@ -504,8 +547,9 @@ export default {
       return new Response(response.body, { status: response.status, headers });
     } catch (error) {
       // 不把邮件、SQL 参数、令牌等写入共享主机日志。
-      if (!(error instanceof ApiError)) console.error('活动 API 内部错误');
-      return json({ error: error instanceof ApiError ? error.message : '服务暂时不可用' }, error instanceof ApiError ? error.status : 500);
+      const expected = error instanceof ApiError || error instanceof HardwareError || error instanceof PlanetGrowthError;
+      if (!expected) console.error('活动 API 内部错误');
+      return json({ error: expected ? error.message : '服务暂时不可用', ...(error instanceof HardwareError ? { code: error.code } : {}) }, expected ? error.status : 500);
     }
   }
 };

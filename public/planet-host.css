@@ -1,0 +1,11 @@
+.planet-heading{display:flex;align-items:center;justify-content:space-between;gap:24px;margin:8px 0 20px}
+.planet-heading h1{font-size:clamp(28px,4vw,42px);margin:6px 0 10px;text-wrap:balance}
+.planet-heading p{color:var(--muted,#655963);margin:0;text-wrap:pretty}
+.planet-actions{display:flex;align-items:center;gap:16px;flex-shrink:0}
+#planet-frame{display:block;width:100%;height:76dvh;min-height:480px;border:1px solid #e0dad0;border-radius:20px;background:#f5f5e9}
+#planet-load-error{padding:16px;margin:12px 0;border:1px solid #b94b36;border-radius:12px}
+.profile-lock-note{font-size:13px;color:var(--muted,#655963)}
+.setup-avatar-summary{display:flex;gap:16px;align-items:center;margin:16px 0}
+.setup-avatar-summary img{width:88px;height:88px;border-radius:50%;object-fit:cover;border:1px solid #dfd8d3}
+.profile-confirm-note{background:#f5f0dc;border-radius:12px;padding:14px;font-size:14px;line-height:1.7}
+@media(max-width:700px){.planet-heading{align-items:flex-start;flex-direction:column;gap:16px}.planet-actions{flex-wrap:wrap}#planet-frame{height:76dvh;min-height:480px;border-radius:14px}.festival-header nav{overflow-x:auto;max-width:100%;white-space:nowrap}}

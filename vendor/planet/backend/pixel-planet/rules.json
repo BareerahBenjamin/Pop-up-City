@@ -1,0 +1,20 @@
+{
+  "ruleVersion": "herstory-pixel-20261004-v1",
+  "campaignId": "herstory_hackathon_2026",
+  "aiActivityIds": [
+    "a2",
+    "a7",
+    "a11",
+    "a15",
+    "a20",
+    "a25",
+    "a29",
+    "a35",
+    "a40",
+    "a44",
+    "a48",
+    "a52"
+  ],
+  "entertainmentCategory": "entertainment",
+  "stageLimit": 6
+}

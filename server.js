@@ -59,7 +59,7 @@ export function createApplication(config, { db, mailer, staticRoot = publicDirec
         if (eventWrites >= 2) { req.resume(); return respond(res, 503, '活动正在保存，请稍后重试'); }
         eventWrite = true; eventWrites++;
       }
-      if (!url.pathname.startsWith('/api/') && url.pathname !== '/healthz' && url.pathname !== '/login') {
+      if (!url.pathname.startsWith('/api/') && url.pathname !== '/healthz' && url.pathname !== '/login' && url.pathname !== '/planet') {
         req.resume();
         return await serveStatic(req, res, url.pathname, resolve(staticRoot));
       }
@@ -126,5 +126,9 @@ async function main() {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  main().catch(() => { console.error('启动失败：请检查配置、数据库权限和迁移状态'); process.exitCode = 1; });
+  main().catch(error => {
+    const schemaError = ['SCHEMA_MIGRATION_REQUIRED', 'SCHEMA_CHECKSUM_MISMATCH'].includes(error.code);
+    console.error(schemaError ? `启动失败：${error.message}` : '启动失败：请检查配置、数据库权限和迁移状态');
+    process.exitCode = 1;
+  });
 }

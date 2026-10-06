@@ -3,9 +3,9 @@
 - **版本：** v1.0
 - **负责人：** Herstory 项目维护者
 - **状态：** 第一版 Node.js 网站源码；生产部署与真实邮件投递需单独验收
-- **最后更新：** 2026-10-05
+- **最后更新：** 2026-10-06
 
-面向 Herstory 社区的活动、成员和共同生活管理网站。采用 **Node.js + SQLite + 原生 JavaScript/CSS**，同一服务提供页面与 API，无需额外前端构建。
+面向 Herstory 社区的活动、成员和共同生活管理网站。采用 **Node.js + SQLite + 原生 JavaScript/CSS**，同一服务提供页面与 API，活动页面无需额外前端构建；星球源码修改后运行 `npm run build:planet`。
 
 本仓库仅包含当前 Node.js 版本，不依赖旧 Cloudflare、Python 桥接服务、硬件固件或独立头像发行项目。真实成员数据、设备凭证、邮箱密码和本地运行环境不随源码发布。★★★★★（运行依赖与提交范围核对。）
 
@@ -20,11 +20,12 @@
 | 分享 | 浏览器生成 PNG 海报，可选活动二维码和系统分享；未发布活动只能生成草稿 |
 | 生活任务 | 发布、领取、退出、成员自行标记完成 |
 | 成员主页 | 资料、已发布活动、完成任务、本人签到和社交连接 |
-| 头像 | 图层选择、穿搭预览和保存配置；不是正式唯一头像发行 |
-| 管理后台 | 成员导入/启停、超级管理员授权、设备凭证管理、活动批量导入和名单 |
+| 头像与资料 | 头像首次确认后锁定，普通资料可继续编辑；已有头像保留；不是正式唯一头像发行 |
+| 星球 | 主网站内嵌 3D、持久身份与四色、真实社交连接与个人活动资产成长；2D 仅硬件；首次登录主动引导 |
+| 管理后台 | 成员导入/启停、超级管理员授权、设备凭证管理、活动批量导入和名单、成长活动绑定与角色审核 |
 | 设备接口 | 设备令牌鉴权、现场 PIN 签到、一次性六位社交码与连接记录 |
 
-成长系统已具备期数、类型、核验、奖励账本和资产表及约束；**规则计算、成长业务 API 和星球页面尚未实现**。设备接口存在不代表真机联调已通过。
+个人星球成长已支持58场活动目录、累计轨道、两场市集、志愿者与发起者奖励、账本及纠正。进入管理后台「星球成长」，启用固定规则并绑定实际活动后使用；详见 [成长说明](planet_growth_v1.0.md)。原 P/H/V/M 指标账本保留，指标计算 API 仍待确定；设备接口存在不代表真机联调已通过。
 
 ## 本地运行
 
@@ -60,9 +61,12 @@ npm start
 server.js / api.js        HTTP 服务、业务路由与权限
 config.js / mail.js       环境配置、SMTP
 covers.js / roles.js      图片封面、超级管理员授权
+planet.js / planet-growth.js 星球身份、快照与资产成长
+hardware.js              硬件确认、签名回执与RGB565
+config/                  固定模型单元与市集清单
 database.js              SQLite、事务与迁移检查
 manage.js / backup.js     迁移、建立管理员、在线备份
-migrations/              0001–0005 全部增量迁移
+migrations/              0001–0010 全部增量迁移
 public/                  页面、样式、交互、品牌和头像素材
 test/                    隔离数据库、模拟邮件及可选浏览器测试
 deploy/                  systemd、Caddy 与生产环境模板
@@ -73,7 +77,7 @@ scripts/                 不含秘密或数据库的发布打包
 
 ## 页面与接口
 
-页面入口：`#events`、`#event/:id`、`#tasks`、`#members`、`#member/:id`、`#me`、`#admin`。成员及管理页面由服务端会话校验；隐藏按钮不是授权机制。
+页面入口：`#planet`、`#setup`、`#events`、`#event/:id`、`#tasks`、`#members`、`#member/:id`、`#me`、`#admin`。成员及管理页面由服务端会话校验；隐藏按钮不是授权机制。
 
 | 接口组 | 主要路径 |
 | --- | --- |
@@ -84,6 +88,7 @@ scripts/                 不含秘密或数据库的发布打包
 | 封面和二维码 | `GET /api/events/:id/cover`、`/qr`；封面随创建/编辑活动提交 |
 | 任务 | `GET/POST /api/tasks`、`PATCH /api/tasks/:id`、`POST/DELETE /api/tasks/:id/claims`、`POST /api/tasks/:id/complete` |
 | 管理 | `/api/admin/members/*`、`/api/admin/events/*`；批量活动 `POST /api/admin/events/import` |
+| 星球成长 | `/api/herstory/planet-state`、`/api/admin/planet/growth/*` |
 | 设备 | `/api/device/me`、`/events`、`/records`、`/checkins`、`/social-code`、`/connections` |
 
 字段和精确方法以 [api.js](api.js) 为准。时间使用 Unix 秒，页面展示 UTC+8。设备使用独立 Bearer Token；网页写请求要求 Origin 与 `PUBLIC_ORIGIN` 一致。当前签到窗口为开始前一小时（含）至开始时刻（不含）。
@@ -92,7 +97,7 @@ scripts/                 不含秘密或数据库的发布打包
 
 所有 `migrations/*.sql` 都必须保留。已应用迁移有 SHA-256 校验，禁止重写、合并或删除旧迁移；新变更新增编号文件。服务启动仅校验，迁移需显式运行。
 
-升级只替换代码并增量迁移，**不上传本机 SQLite 覆盖服务器数据库**。迁移前可运行 `npm run backup -- /绝对路径/backup.sqlite`；备份文件不得提交仓库。`AUTH_PEPPER` 需要保持稳定。
+升级只替换代码并增量迁移，**不上传本机 SQLite 覆盖服务器数据库**。迁移前可运行 `npm run backup -- backup-before-upgrade.sqlite`；备份文件不得提交仓库。`AUTH_PEPPER` 需要保持稳定。
 
 ## 验证
 
@@ -120,5 +125,14 @@ node test/browser.mjs
 - [成长数据字典](growth_data_dictionary_v1.0.md)
 - [当前视觉说明](visual_refresh_v1.0.md)
 - [技术决策记录](decision_log_v1.0.md)
+- [星球嵌入与首次身份设置](planet_integration_v1.0.md)
 
 本仓库是 Node 服务源码，不能直接用 GitHub Pages 运行后端。品牌图片和头像素材为项目提供素材；公开源码不代表额外授予第三方素材的使用授权。
+
+2026-10-06 更新：头像确认后锁定，其他个人资料可编辑。硬件签到、双向交友与版本化 RGB565 分块接口见 [硬件 API](hardware_api_v1.0.md)。增量迁移至 0009；部署前备份，勿覆盖历史迁移。
+
+- [个人星球成长规则与验收](planet_growth_v1.0.md)
+- [硬件数据与确认契约](hardware_api_v1.0.md)
+
+- [云服务器逐步部署流程](cloud_deployment_v1.0.md)
+- [RGB565硬件画面存储契约](rgb565_storage_v1.0.md)

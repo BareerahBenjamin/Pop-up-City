@@ -53,10 +53,14 @@ export function migrate(db) {
 
 export function checkSchema(db) {
   // 服务启动只验证，迁移由显式管理命令完成。
+  const missing = () => Object.assign(new Error('数据库有待执行迁移。请先备份，再运行 npm run migrate，然后运行 npm start。'), { code: 'SCHEMA_MIGRATION_REQUIRED' });
+  if (!db.raw.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='schema_migrations'").get()) throw missing();
   const applied = db.raw.prepare('SELECT name,checksum FROM schema_migrations').all();
   const directory = new URL('./migrations/', import.meta.url);
   for (const name of readdirSync(directory).filter(n => /^\d+.*\.sql$/.test(n))) {
     const checksum = createHash('sha256').update(readFileSync(new URL(name, directory))).digest('hex');
-    if (!applied.some(m => m.name === name && m.checksum === checksum)) throw new Error('数据库迁移缺失或校验失败，请先运行 manage.js migrate');
+    const previous = applied.find(m => m.name === name);
+    if (!previous) throw missing();
+    if (previous.checksum !== checksum) throw Object.assign(new Error('已应用迁移的校验失败。请恢复原迁移文件；不要删除迁移记录或覆盖数据库。'), { code: 'SCHEMA_CHECKSUM_MISMATCH' });
   }
 }

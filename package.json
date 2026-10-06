@@ -11,7 +11,9 @@
     "migrate": "node --env-file=.env manage.js migrate",
     "admin": "node --env-file=.env manage.js admin",
     "test": "node --test test/*.test.js",
-    "backup": "node --env-file=.env backup.js"
+    "backup": "node --env-file=.env backup.js",
+    "build:planet": "node scripts/build-planet.cjs",
+    "test:planet:browser": "node test/planet-browser.mjs"
   },
   "dependencies": {
     "nodemailer": "10.0.12",
