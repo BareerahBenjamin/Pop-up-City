@@ -63,9 +63,9 @@ export function completePlanetOnboarding(db, memberId) {
 }
 
 export function loginDestination(db, memberId) {
-  if (db.raw.prepare('SELECT profile_completed_at FROM members WHERE id=?').get(memberId)?.profile_completed_at != null) return '/#me';
+  if (db.raw.prepare('SELECT profile_completed_at FROM members WHERE id=?').get(memberId)?.profile_completed_at == null) return '/#setup';
   const seen = db.raw.prepare('SELECT onboarded_at FROM member_planets WHERE member_id=?').get(memberId);
-  return seen?.onboarded_at ? '/#setup' : '/#planet/welcome';
+  return seen?.onboarded_at ? '/#me' : '/#planet/welcome';
 }
 
 export function planetDocument(snapshot, view) {

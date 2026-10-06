@@ -2,7 +2,11 @@ import sharp from 'sharp';
 
 export const MAX_COVER_BYTES = 5 * 1024 * 1024;
 export const EVENT_BODY_LIMIT = Math.ceil(MAX_COVER_BYTES / 3) * 4 + 64000;
+export const MAX_GAME_JAM_FIRMWARE_BYTES = 0x690000;
+export const MAX_GAME_JAM_COVER_BYTES = 3 * 1024 * 1024;
+export const GAME_JAM_BODY_LIMIT = MAX_GAME_JAM_FIRMWARE_BYTES + MAX_GAME_JAM_COVER_BYTES + 64000;
 export function bodyLimit(method, pathname) {
+  if (method === 'POST' && pathname === '/api/game-jam/projects') return GAME_JAM_BODY_LIMIT;
   if (method === 'POST' && pathname === '/api/admin/events/import') return 512 * 1024;
   return (method === 'POST' && pathname === '/api/events') ||
     (method === 'PATCH' && /^\/api\/events\/[a-f0-9-]{36}$/.test(pathname)) ? EVENT_BODY_LIMIT : 16000;

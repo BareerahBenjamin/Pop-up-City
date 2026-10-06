@@ -2,18 +2,20 @@
 
 - **版本：** v1.0
 - **负责人：** 网站／数据库／后台负责人
-- **状态：** Linux独立服务与公网HTTPS已验收；SMTP连接认证通过，实际投递及真机待验收
+- **状态：** 支持保留现有数据的增量发布；真实投递与真机待验收
 - **最后更新：** 2026-10-06
 
 ## 交付内容与适用环境
 
-准备的 `herstory-popup-city-20261006-cloud.tar.gz` 是可部署源码，含主网站、内嵌3D、成长规则、RGB565渲染／存储／下载、10个增量迁移、依赖锁文件、配置模板、自检脚本和本文。配套 `.sha256` 校验上传完整性。
+准备的 `herstory-popup-city-20261006-cloud.tar.gz` 是可部署源码，含主网站、内嵌3D、成长规则、RGB565渲染／存储／下载、11个增量迁移、依赖锁文件、配置模板、自检脚本和本文。配套 `.sha256` 校验上传完整性。
+
+v1.4交付包不含Game Jam和资料优先流程。包含这两项功能的发布包从v1.5开始；每次发布应重新打包当前源码，校验Git提交号与文件摘要，并将下方路径改为本次新包所在目录。
 
 适用于项目现有方案：Ubuntu/Debian Linux、systemd、Caddy 2、单个Node进程和SQLite持久磁盘。服务器可以已有其他网站。默认新网站域名沿用 `kunyuan.site`；如实际使用别的域名，在配置与Caddy片段中同步替换。不适用于无持久磁盘的临时容器或多台服务器同时共享SQLite。
 
 发布包不含本机 `.env`、成员数据库、SMTP密码、设备令牌、SSH密钥、node_modules或Mac运行时。Node与依赖在Linux服务器安装。源码部署不会自动搬迁本机成员、已确认头像或星球数据。
 
-**信心：★★★★★（本地主机与已部署Linux主机）；★★★☆☆（邮件送达与真机）。** 登录现要求后台先导入邮箱和昵称，未导入／已停用邮箱返回403且不发邮件；本地及Linux主机44项测试通过，桌面／手机登录流程已验收。本手册仍须按实际目标主机校验，不能直接套用到另一台服务器。
+**信心：★★★★★（本地主机与已部署Linux主机）；★★★☆☆（邮件送达与真机）。** 登录现要求后台先导入邮箱和昵称，未导入／已停用邮箱返回403且不发邮件；已上线旧版本的本地及Linux44项测试通过；本次新增功能52项本地测试及桌面／手机联调通过；上线前应在目标Linux主机再执行隔离回归。本手册仍须按实际目标主机校验，不能直接套用到另一台服务器。
 
 ## 1. 准备信息与连接
 
@@ -27,7 +29,7 @@ Mac终端中先修改以下变量，然后在同一个终端按步骤执行。SS
 DEPLOY_IP='YOUR_SERVER_IP'
 DEPLOY_USER='ubuntu'
 DEPLOY_KEY="$HOME/.ssh/YOUR_SERVER_KEY"
-DEPLOY_PACKAGE_DIR='/Users/bareerah/Documents/popup/02_Execution/outputs/cloud_deployment_20261006_v1.4'
+DEPLOY_PACKAGE_DIR='/absolute/path/to/new-release-package'
 DEPLOY_PACKAGE='herstory-popup-city-20261006-cloud.tar.gz'
 
 cd "$DEPLOY_PACKAGE_DIR"
@@ -111,7 +113,7 @@ sudo /opt/herstory-popup-city/runtime/bin/node \
 sudo /opt/herstory-popup-city/runtime/bin/node scripts/check-release.mjs
 ```
 
-期待输出 `status:ok`、10个迁移、240×320/RGB565/153600、SQLite BLOB和sharp:ok。检查只用内存库，不创建或改写生产数据。
+期待输出 `status:ok`、11个迁移、240×320/RGB565/153600、SQLite BLOB和sharp:ok。检查只用内存库，不创建或改写生产数据。
 
 sharp使用Linux对应可选二进制；不能从Mac复制node_modules，不能加 `--omit=optional`。如果自检失败，先修复缺失依赖／架构／模型摘要问题，不启动服务。已打包构建好的H5，无需在服务器重新冻结模型清单。
 
@@ -216,7 +218,7 @@ curl -fsS https://kunyuan.site/healthz
 
 ## 已有云端数据库升级
 
-本次登录限制更新只修改代码，迁移仍为0001–0010。现有云端数据库已通过新代码的只读Schema检查时，直接切换新发布目录并重启本服务即可；不要运行下方迁移命令，也不要重新创建管理员或覆盖配置／数据库。仅当后续版本确实新增迁移时，才执行备份、停机与迁移流程。
+从0001–0010升级到Game Jam的0011时，必须先一致性备份云库，再执行下面的增量迁移与服务切换，不能只换代码。已应用0011的库再次升级时会校验并跳过此迁移。0011只新增作品表，保留原成员、头像与星球记录。不要重新创建管理员或覆盖配置／数据库。
 
 不再执行首次建用户、重建配置、生成AUTH_PEPPER或创建管理员。保持旧.env配置、运行时和独立数据目录。按第1–2步校验上传包，再为新发布选择尚不存在的版本目录：
 
@@ -244,6 +246,9 @@ sudo -u herstory-popup-city /opt/herstory-popup-city/runtime/bin/node \
   --env-file=/etc/herstory-popup-city/server.env backup.js "$DEPLOY_BACKUP"
 DEPLOY_PREVIOUS=$(readlink -f /opt/herstory-popup-city/current)
 sudo systemctl stop herstory-popup-city
+# 停机后再备份一次，覆盖在线备份完成后可能新增的业务记录。
+sudo -u herstory-popup-city /opt/herstory-popup-city/runtime/bin/node \
+  --env-file=/etc/herstory-popup-city/server.env backup.js "backup-cutover-$(date +%Y%m%d-%H%M%S).sqlite"
 cd "/opt/herstory-popup-city/releases/$DEPLOY_RELEASE"
 sudo -u herstory-popup-city /opt/herstory-popup-city/runtime/bin/node \
   --env-file=/etc/herstory-popup-city/server.env manage.js migrate

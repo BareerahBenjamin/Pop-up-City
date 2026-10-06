@@ -56,9 +56,19 @@ test('planet uses deduplicated authenticated exchanges, first encounter time and
   f.db.raw.prepare("UPDATE members SET status='disabled' WHERE id=?").run(b.id);
   const removed=(await f.call('/api/herstory/planet-state',a)).data;assert.equal(removed.connections.length,0);assert.ok(removed.revision>next.revision);
 });
+test('first login goes to profile setup, then planet welcome, then returning member home', async t=>{
+  const f=fixture(t),a=f.user('新邻居');
+  assert.equal(loginDestination(f.db,a.id),'/#setup');
+  const saved=await f.call('/api/me',a,{nickname:'新邻居',bio:'介绍',skills:'绘画',needs:'朋友',avatar,card_public:true,finalize:true},'PATCH');
+  assert.equal(saved.status,200);assert.equal(saved.data.next,'/#planet/welcome');
+  assert.equal(loginDestination(f.db,a.id),'/#planet/welcome');
+  await f.call('/api/herstory/planet-onboarding',a,{});
+  assert.equal(loginDestination(f.db,a.id),'/#me');
+});
+
 test('avatar finalizes once while ordinary profile remains editable by member and admin', async t=>{
   const f=fixture(t),a=f.user('甲'),admin=f.user('管理','admin');
-  assert.equal(loginDestination(f.db,a.id),'/#planet/welcome');
+  assert.equal(loginDestination(f.db,a.id),'/#setup');
   await f.call('/api/herstory/planet-onboarding',a,{});assert.equal(loginDestination(f.db,a.id),'/#setup');
   const body={nickname:'确认名字',bio:'自我介绍',skills:'绘画',needs:'朋友',avatar,card_public:false,finalize:true};
   assert.equal((await f.call('/api/admin/members/'+a.id,admin,{avatar},'PATCH')).status,403);

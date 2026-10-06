@@ -22,7 +22,19 @@ try{
  await page.goto(origin+'/#planet');await page.getByRole('button',{name:'用邮箱登录 ↗'}).click();
  await page.locator('#login-request-form input').fill(user+'@example.test');await page.getByRole('button',{name:'获取登录邮件',exact:true}).click();
  const code=/验证码是 (\d{6})/.exec(messages[0].text)[1];await page.locator('#login-code-form input').fill(code);await page.locator('#login-code-form button').click();
- await page.waitForURL('**/#planet/welcome');await page.locator('#planet-frame').waitFor();
+ await page.waitForURL('**/#setup');await page.locator('#profile-setup-form').waitFor();
+ assert.equal(await page.locator('#planet-frame').count(),0);
+ await page.locator('#profile-setup-form input[name=nickname]').fill('只设置一次');await page.locator('#profile-setup-form textarea[name=bio]').fill('一起建造和学习');
+ await page.screenshot({path:out+'/first-login-profile-desktop.png',fullPage:true});
+ await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+ await page.screenshot({path:out+'/first-login-profile-mobile.png',fullPage:true});
+ await page.getByRole('button',{name:'下一步：设置头像',exact:true}).click();await page.waitForFunction(()=>avatarEditor?.ready);
+ await page.getByRole('button',{name:'下一步：确认资料',exact:true}).click();
+ assert.equal(await page.locator('#profile-form input[name=nickname]').inputValue(),'只设置一次');
+ assert.equal(await page.locator('#profile-form textarea[name=bio]').inputValue(),'一起建造和学习');
+ await page.screenshot({path:out+'/profile-confirm-mobile.png',fullPage:true});
+ await page.getByRole('button',{name:'确认头像并保存资料',exact:true}).click();await page.waitForURL('**/#planet/welcome');
+ await page.locator('#planet-frame').waitFor();await page.setViewportSize({width:1280,height:1000});
  let frame=page.frameLocator('#planet-frame');await frame.locator('#world').waitFor({state:'attached'});assert.equal(await frame.locator('#host-pixel-canvas, [data-planet-mode], #pixel-pane').count(),0);
  await page.waitForFunction(()=>document.querySelector('#planet-loading').hidden);
  const identity=await frame.locator('body').evaluate(()=>window.HerstoryIdentity.getProfile());assert.equal(identity.userId,user);assert.ok(identity.planetId);
@@ -35,12 +47,7 @@ try{
  await page.reload();await page.waitForFunction(()=>document.querySelector('#planet-loading')?.hidden);
  frame=page.frameLocator('#planet-frame');assert.deepEqual(await frame.locator('body').evaluate(()=>window.HerstoryIdentity.getProfile()),identity);
  await page.locator('#planet-frame').scrollIntoViewIfNeeded();await frame.getByRole('button',{name:'星域',exact:true}).click();await page.screenshot({path:out+'/planet-mobile-field.png',fullPage:true});
- await page.getByRole('button',{name:'设置头像与资料 ↗'}).click();await page.waitForURL('**/#setup');
- await page.getByRole('button',{name:'开始设置头像 ↗'}).click();await page.waitForFunction(()=>avatarEditor?.ready);
- await page.getByRole('button',{name:'下一步：填写资料',exact:true}).click();
- await page.locator('#profile-form input[name=nickname]').fill('只设置一次');await page.locator('#profile-form textarea[name=bio]').fill('一起建造和学习');
- await page.screenshot({path:out+'/profile-confirm-mobile.png',fullPage:true});
- await page.getByRole('button',{name:'确认头像并保存资料',exact:true}).click();await page.waitForURL('**/#me');
+ await page.getByRole('button',{name:'开始探索我的星球 ↗',exact:true}).click();await page.waitForURL('**/#planet');await page.goto(origin+'/#me');
  await page.locator('.profile-lock-note').waitFor();assert.equal(await page.locator('[data-action=edit-avatar]').count(),0);
  const forbidden=await page.evaluate(async()=>{const r=await fetch('/api/me',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({avatar:{}})});return r.status});assert.equal(forbidden,409);
  const savedAvatar=await page.evaluate(()=>JSON.stringify(state.me.avatar));
@@ -54,7 +61,7 @@ try{
  await p2.frameLocator('#planet-frame').locator('body').evaluate(()=>window.HerstoryApp.refresh());
  await p2.getByRole('button',{name:'用邮箱登录 ↗'}).waitFor();assert.equal(await p2.locator('#planet-frame').count(),0);
  assert.deepEqual(errors,[]);
- console.log('PASS: login→planet→one-time profile, persistent identity, real connections, website 3D only, mobile layout, editable profile and immutable avatar and expired-session clearing');
+ console.log('PASS: login→personal information→one-time avatar→planet, persistent identity, real connections, website 3D only, mobile layout, editable profile and immutable avatar and expired-session clearing');
  console.log(out);
  await second.close();await context.close();
 }finally{await browser?.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));db.close();}

@@ -42,6 +42,14 @@ try {
   await page.locator('#login-code-form [name="code"]').fill(/验证码是 (\d{6})/.exec(messages[0].text)[1]);
   await page.getByRole('button', { name: '验证并登录', exact: true }).click();
   await page.waitForFunction(() => state.me?.nickname === '新邻居');
+  await page.waitForURL('**/#setup'); await page.locator('#profile-setup-form').waitFor();
+  assert.equal(await page.locator('#planet-frame').count(), 0);
+  const linkId=randomUUID();db.raw.prepare('INSERT INTO members(id,email,nickname,created_at,updated_at) VALUES(?,?,?,?,?)').run(linkId,'link@example.test','链接邻居',stamp,stamp);
+  assert.equal((await adminContext.request.post(origin+'/api/auth/request',{headers:{Origin:origin},data:{email:'link@example.test'}})).status(),200);
+  const linkToken=/\/login#([a-f0-9]{64})/.exec(messages.at(-1).text)[1];
+  const linkContext=await browser.newContext(),linkPage=await linkContext.newPage();await linkPage.goto(origin+'/login#'+linkToken);
+  await linkPage.getByRole('button',{name:'确认登录',exact:true}).click();await linkPage.waitForURL('**/#setup');await linkPage.locator('#profile-setup-form').waitFor();
+  assert.equal(await linkPage.locator('#planet-frame').count(),0);
   assert.deepEqual(errors, []);
   console.log('PASSED: unknown email stays on login form without mail/credentials; administrator imports email and nickname; member receives mock code and logs in; 375px layout.');
 } finally { await browser?.close(); await new Promise(resolve => server.close(resolve)); db.close(); }

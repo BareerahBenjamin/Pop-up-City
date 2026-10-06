@@ -37,9 +37,9 @@ try{
  const expected=await page.evaluate(()=>avatarData({release:catalog.release,selection:{...avatarEditor.selection}}));assert.equal(before,expected);
  await page.screenshot({path:`${out}/avatar-desktop.png`});
  // Finish the one-time combined setup; avatar re-editing is intentionally unavailable afterward.
- await page.getByRole('button',{name:'下一步：填写资料',exact:true}).click();
+ await page.getByRole('button',{name:'下一步：确认资料',exact:true}).click();
  await page.getByRole('button',{name:'确认头像并保存资料',exact:true}).click();
- await page.waitForFunction(()=>!document.querySelector('#modal').open);await page.reload();
+ await page.waitForFunction(()=>!document.querySelector('#modal').open);await page.waitForURL('**/#planet/welcome');await page.goto(`${origin}/#me`);
  await page.locator('.profile-head .avatar img').waitFor();assert.equal(await page.locator('.profile-head .avatar img').getAttribute('src'),before);
  assert.equal(await page.locator('[data-action="edit-avatar"]').count(),0);
  await page.goto(`${origin}/#admin`);await page.locator(`[data-action="set-member-role"][data-id="${neighbor.id}"]`).click();await page.waitForFunction(id=>state.adminMembers.find(m=>m.id===id)?.role==='admin',neighbor.id);

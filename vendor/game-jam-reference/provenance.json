@@ -1,0 +1,6 @@
+{
+  "repository": "https://github.com/Jiajia-Chen/herstory-popupcity-game-jam",
+  "commit": "59c91e6a8c56cd1ce97977f661c051c326fb340d",
+  "integration": "Native host page adapted from upstream presentation and manifest precheck; original Next.js source retained for reference only.",
+  "date": "2026-10-06"
+}

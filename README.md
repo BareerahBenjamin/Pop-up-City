@@ -2,7 +2,7 @@
 
 - **版本：** v1.0
 - **负责人：** Herstory 项目维护者
-- **状态：** kunyuan.site 的 HTTPS 部署与 SMTP 连接认证已通过；真实邮件送达与硬件待验收
+- **状态：** Game Jam及首次登录资料流程已完成；发布时需应用0011增量迁移
 - **最后更新：** 2026-10-06
 
 面向 Herstory 社区的活动、成员和共同生活管理网站。采用 **Node.js + SQLite + 原生 JavaScript/CSS**，同一服务提供页面与 API，活动页面无需额外前端构建；星球源码修改后运行 `npm run build:planet`。
@@ -20,8 +20,9 @@
 | 分享 | 浏览器生成 PNG 海报，可选活动二维码和系统分享；未发布活动只能生成草稿 |
 | 生活任务 | 发布、领取、退出、成员自行标记完成 |
 | 成员主页 | 资料、已发布活动、完成任务、本人签到和社交连接 |
-| 头像与资料 | 头像首次确认后锁定，普通资料可继续编辑；已有头像保留；不是正式唯一头像发行 |
+| 头像与资料 | 首次登录先填资料、再设置头像、确认后进入星球；头像首次确认后锁定，普通资料可继续编辑；已有头像保留；不是正式唯一头像发行 |
 | 星球 | 主网站内嵌 3D、持久身份与四色、真实社交连接与个人活动资产成长；2D 仅硬件；首次登录主动引导 |
+| Game Jam | 真实作品画廊、分类搜索、成员投稿、manifest／固件与封面存储、管理员审核与文件下载 |
 | 管理后台 | 成员导入/启停、超级管理员授权、设备凭证管理、活动批量导入和名单、成长活动绑定与角色审核 |
 | 设备接口 | 设备令牌鉴权、现场 PIN 签到、一次性六位社交码与连接记录 |
 
@@ -65,10 +66,11 @@ config.js / mail.js       环境配置、SMTP
 covers.js / roles.js      图片封面、超级管理员授权
 planet.js / planet-growth.js 星球身份、快照与资产成长
 hardware.js              硬件确认、签名回执与RGB565
+game-jam.js              投稿、应用归属、审核、文件存储与下载
 config/                  固定模型单元与市集清单
 database.js              SQLite、事务与迁移检查
 manage.js / backup.js     迁移、建立管理员、在线备份
-migrations/              0001–0010 全部增量迁移
+migrations/              0001–0011 全部增量迁移
 public/                  页面、样式、交互、品牌和头像素材
 test/                    隔离数据库、模拟邮件及可选浏览器测试
 deploy/                  systemd、Caddy 与生产环境模板
@@ -90,7 +92,7 @@ scripts/                 不含秘密或数据库的发布打包
 | 封面和二维码 | `GET /api/events/:id/cover`、`/qr`；封面随创建/编辑活动提交 |
 | 任务 | `GET/POST /api/tasks`、`PATCH /api/tasks/:id`、`POST/DELETE /api/tasks/:id/claims`、`POST /api/tasks/:id/complete` |
 | 管理 | `/api/admin/members/*`、`/api/admin/events/*`；批量活动 `POST /api/admin/events/import` |
-| 星球成长 | `/api/herstory/planet-state`、`/api/admin/planet/growth/*` |
+| 星球成长、Game Jam审核 | `/api/herstory/planet-state`、`/api/admin/planet/growth/*` |
 | 设备 | `/api/device/me`、`/events`、`/records`、`/checkins`、`/social-code`、`/connections` |
 
 字段和精确方法以 [api.js](api.js) 为准。时间使用 Unix 秒，页面展示 UTC+8。设备使用独立 Bearer Token；网页写请求要求 Origin 与 `PUBLIC_ORIGIN` 一致。当前签到窗口为开始前一小时（含）至开始时刻（不含）。
@@ -120,6 +122,8 @@ node test/browser.mjs
 浏览器检查使用独立内存数据库和本地端口 3331；不使用运行中的 3300 数据库。用同样环境变量运行 `node test/login-browser.mjs` 可在端口3336验证「未导入被拒绝 → 管理员导入邮箱和昵称 → 验证码登录」，邮件仅捕获在内存中。测试通过不代表真实邮件投递或硬件已经验收。
 
 ## 部署与对接文档
+
+- [Game Jam页面与数据库接入](game_jam_integration_v1.0.md)
 
 - [独立部署与安全升级](deployment_v1.0.md)
 - [数据库完整结构](database_schema_v1.0.md)

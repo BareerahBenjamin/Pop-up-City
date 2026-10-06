@@ -9,7 +9,7 @@
 
 **信心：★★★★★。** 字段、主键、外键直接读取本机 SQLite PRAGMA；成长系统已建表，但尚未提供核验和自动奖励业务入口。
 
-> **2026-10-06 增量：** 以下图为原 0001–0005 的 28 表历史快照；0006–0009 后为 39 表与 1 个视图；0010 后为 45 表与 1 个视图。0006 增加 member_planets；0007 增加 members.profile_completed_at；0008 只锁头像并释放普通资料编辑；0009 增加 10 张硬件表，精确字段与约束见 [迁移](migrations/0009_hardware_planet.sql) 与 [硬件数据契约](hardware_api_v1.0.md)。0010 增加固定发布、里程碑、角色审核、事实纠正、个人资产发放与冲正，见 [成长说明](planet_growth_v1.0.md)。本次验证本地数据库，未核对生产实例。
+> **2026-10-06 增量：** 以下图为原 0001–0005 的 28 表历史快照；0006–0009 后为 39 表与 1 个视图；0010 后为 45 表与 1 个视图；0011 后为48表与1个视图，增加game_jam_apps、game_jam_projects和game_jam_reviews，详见[Game Jam接入](game_jam_integration_v1.0.md)。0006 增加 member_planets；0007 增加 members.profile_completed_at；0008 只锁头像并释放普通资料编辑；0009 增加 10 张硬件表，精确字段与约束见 [迁移](migrations/0009_hardware_planet.sql) 与 [硬件数据契约](hardware_api_v1.0.md)。0010 增加固定发布、里程碑、角色审核、事实纠正、个人资产发放与冲正，见 [成长说明](planet_growth_v1.0.md)。本次验证本地数据库，未核对生产实例。
 
 ## 阅读说明
 

@@ -5,6 +5,7 @@ import { hardwareRoute, hardwareAdminRoute, HardwareError } from './hardware.js'
 import { changeMemberRole } from './roles.js';
 import QRCode from 'qrcode';
 import { prepareCover, bodyLimit } from './covers.js';
+import { gameJamRoute, GameJamError } from './game-jam.js';
 
 const enc = new TextEncoder();
 const now = () => Math.floor(Date.now() / 1000);
@@ -171,6 +172,8 @@ async function route(request, env) {
   }
   if (p.startsWith('/api/device/')) return deviceRoute(request, env, url);
   const user = await memberFromCookie(request, env);
+  const gameJam = await gameJamRoute(request,env,user,body);
+  if (gameJam) return gameJam;
   if (method === 'GET' && p === '/planet') {
     if (!user) return new Response('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><p>请先登录，再进入你的星球。</p><a href="/#planet" target="_top">返回网站登录</a></html>', { status: 401, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Frame-Options': 'SAMEORIGIN', 'Content-Security-Policy': "frame-ancestors 'self'" } });
     return new Response(planetDocument(planetSnapshot(env.DB, user.id), url.searchParams.get('view')), { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'private, no-store', 'X-Frame-Options': 'SAMEORIGIN', 'Content-Security-Policy': "frame-ancestors 'self'; base-uri 'none'; object-src 'none'" } });
@@ -235,7 +238,7 @@ async function route(request, env) {
     const d = validateProfile(input), stamp = now();
     const result = await run(env.DB, 'UPDATE members SET nickname=?,bio=?,skills=?,needs=?,avatar_json=?,card_public=?,updated_at=?,profile_completed_at=? WHERE id=? AND profile_completed_at IS NULL', d.nickname, d.bio, d.skills, d.needs, d.avatar, d.cardPublic === undefined ? user.card_public : Number(d.cardPublic), stamp, stamp, user.id);
     if (!result.meta.changes) fail(409, '头像已确认，不能修改或重新生成');
-    return json({ member: profile(await first(env.DB, 'SELECT * FROM members WHERE id=?', user.id), true) });
+    return json({ member: profile(await first(env.DB, 'SELECT * FROM members WHERE id=?', user.id), true), next: loginDestination(env.DB, user.id) });
   }
   if (method === 'GET' && p === '/api/members') {
     requireMember(user); return json({ members: (await all(env.DB, "SELECT * FROM members WHERE status='active' ORDER BY nickname LIMIT 200")).map(m => profile(m)) });
@@ -547,7 +550,7 @@ export default {
       return new Response(response.body, { status: response.status, headers });
     } catch (error) {
       // 不把邮件、SQL 参数、令牌等写入共享主机日志。
-      const expected = error instanceof ApiError || error instanceof HardwareError || error instanceof PlanetGrowthError;
+      const expected = error instanceof ApiError || error instanceof HardwareError || error instanceof PlanetGrowthError || error instanceof GameJamError;
       if (!expected) console.error('活动 API 内部错误');
       return json({ error: expected ? error.message : '服务暂时不可用', ...(error instanceof HardwareError ? { code: error.code } : {}) }, expected ? error.status : 500);
     }
