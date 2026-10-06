@@ -27,7 +27,7 @@ Mac终端中先修改以下变量，然后在同一个终端按步骤执行。SS
 DEPLOY_IP='YOUR_SERVER_IP'
 DEPLOY_USER='ubuntu'
 DEPLOY_KEY="$HOME/.ssh/YOUR_SERVER_KEY"
-DEPLOY_PACKAGE_DIR='/Users/bareerah/Documents/popup/02_Execution/outputs/cloud_deployment_20261006_v1.1'
+DEPLOY_PACKAGE_DIR='/Users/bareerah/Documents/popup/02_Execution/outputs/cloud_deployment_20261006_v1.2'
 DEPLOY_PACKAGE='herstory-popup-city-20261006-cloud.tar.gz'
 
 cd "$DEPLOY_PACKAGE_DIR"
