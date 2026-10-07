@@ -21,8 +21,8 @@ function fixture(t) {
     db.raw.prepare('INSERT INTO sessions VALUES(?,?,?,?)').run(hash(token), id, stamp+3600, stamp);
     return { id, token };
   }
-  async function call(path, actor, body, method = body ? 'POST' : 'GET') {
-    const r = await api.fetch(new Request(env.PUBLIC_ORIGIN+path, { method, headers: { Origin: env.PUBLIC_ORIGIN, ...(actor ? { Cookie: 'popup_city_session='+actor.token } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) }), env);
+  async function call(path, actor, body, method = body ? 'POST' : 'GET', headers = {}) {
+    const r = await api.fetch(new Request(env.PUBLIC_ORIGIN+path, { method, headers: { Origin: env.PUBLIC_ORIGIN, ...(actor ? { Cookie: 'popup_city_session='+actor.token } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}), ...headers }, ...(body ? { body: JSON.stringify(body) } : {}) }), env);
     const text = await r.text(); return { status: r.status, headers: r.headers, data: r.headers.get('content-type')?.includes('json') ? JSON.parse(text) : text };
   }
   return { db, path, user, call, stamp };
@@ -103,4 +103,20 @@ test('upgrading preserves and locks existing avatars without locking incomplete 
     assert.equal(db.raw.prepare('SELECT avatar_json FROM members WHERE id=?').get('old').avatar_json,JSON.stringify(avatar));
     assert.equal(db.raw.prepare('SELECT profile_completed_at FROM members WHERE id=?').get('new').profile_completed_at,null);
   }finally{db.close();}
+});
+
+test('identical finalization retries return saved result without rewriting locked profile',async t=>{
+ const f=fixture(t),a=f.user('重试');const body={nickname:'Rae',bio:'hihi',skills:'睡觉',needs:'睡觉的地方',avatar,card_public:true,finalize:true};
+ const responses=await Promise.all(Array.from({length:4},()=>f.call('/api/me',a,body,'PATCH')));assert.ok(responses.every(r=>r.status===200));
+ const before=f.db.raw.prepare('SELECT * FROM members WHERE id=?').get(a.id),changes=f.db.raw.prepare('SELECT total_changes() n').get().n;
+ const reordered={...body,nickname:' Rae ',avatar:{selection:Object.fromEntries(Object.entries(avatar.selection).reverse()),release:avatar.release}};
+ const retried=await f.call('/api/me',a,reordered,'PATCH');assert.equal(retried.status,200);assert.equal(retried.data.next,'/#planet/welcome');
+ assert.equal(f.db.raw.prepare('SELECT total_changes() n').get().n,changes);assert.deepEqual(f.db.raw.prepare('SELECT * FROM members WHERE id=?').get(a.id),before);
+ assert.equal((await f.call('/api/me',a,{...body,needs:'different'},'PATCH')).status,409);
+ assert.equal((await f.call('/api/me',a)).data.next,'/#planet/welcome');
+});
+test('profile owner header prevents stale forms from saving into a switched account',async t=>{
+ const f=fixture(t),a=f.user('原账号'),b=f.user('新账号');const changes=f.db.raw.prepare('SELECT total_changes() n').get().n;
+ assert.equal((await f.call('/api/me',b,{nickname:'不能覆盖',bio:'',skills:'',needs:'',avatar,finalize:true},'PATCH',{'X-Profile-Owner':a.id})).status,409);
+ assert.equal(f.db.raw.prepare('SELECT total_changes() n').get().n,changes);assert.equal(f.db.raw.prepare('SELECT profile_completed_at FROM members WHERE id=?').get(b.id).profile_completed_at,null);
 });

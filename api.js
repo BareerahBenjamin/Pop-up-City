@@ -91,6 +91,12 @@ function validateProfile(data) {
   if (data.card_public !== undefined && typeof data.card_public !== 'boolean') fail(400, '名片公开设置不合法');
   return { nickname: str(data.nickname, 20, '昵称'), bio: str(data.bio ?? '', 160, '介绍', false), skills: str(data.skills ?? '', 100, '技能', false), needs: str(data.needs ?? '', 160, '期待', false), avatar: JSON.stringify(avatar), cardPublic: data.card_public };
 }
+function finalProfileMatches(member, data) {
+  if (member.profile_completed_at == null || !['nickname','bio','skills','needs'].every(key => member[key] === data[key]) || Boolean(member.card_public) !== (data.cardPublic ?? Boolean(member.card_public))) return false;
+  const saved = JSON.parse(member.avatar_json), requested = JSON.parse(data.avatar);
+  return saved.release === requested.release && Object.keys(saved.selection || {}).length === Object.keys(requested.selection || {}).length &&
+    Object.entries(requested.selection || {}).every(([key,value]) => saved.selection?.[key] === value);
+}
 async function eventDetail(db, id) {
   const e = await first(db, `SELECT e.*,c.version cover_version,m.nickname host_nickname,
     (SELECT COUNT(*) FROM event_registrations r WHERE r.event_id=e.id AND r.kind='attendee') attendee_count,
@@ -220,15 +226,18 @@ async function route(request, env) {
     if (token) await run(env.DB, 'DELETE FROM sessions WHERE token_hash=?', await digest(token));
     return json({ ok: true }, 200, { 'Set-Cookie': `popup_city_session=; Path=/; HttpOnly;${env.SECURE_COOKIES ? ' Secure;' : ''} SameSite=Lax; Max-Age=0` });
   }
-  if (method === 'GET' && p === '/api/me') return json({ member: profile(requireMember(user), true) });
+  if (method === 'GET' && p === '/api/me') { requireMember(user); return json({ member: profile(user, true), next: loginDestination(env.DB, user.id) }); }
   if (method === 'GET' && p === '/api/me/records') {
     requireMember(user);
     return json({ checkins: await all(env.DB, 'SELECT c.event_id,e.title,c.checked_at FROM checkins c JOIN events e ON e.id=c.event_id WHERE c.member_id=? ORDER BY c.checked_at DESC', user.id), connections: await connectionsFor(env.DB, user.id) });
   }
   if (method === 'PATCH' && p === '/api/me') {
     requireMember(user);
+    if (request.headers.has('x-profile-owner') && request.headers.get('x-profile-owner') !== user.id) fail(409, '登录账号已改变，请用原账号重新登录后保存');
     const input = await body(request);
     if (user.profile_completed_at != null) {
+      if (input.finalize === true && validFinalAvatar(input.avatar) && finalProfileMatches(user, validateProfile(input)))
+        return json({ member: profile(user, true), next: loginDestination(env.DB, user.id) });
       if (input.avatar !== undefined || input.finalize !== undefined) fail(409, '头像已确认，不能修改或重新生成');
       const d = validateProfile({ nickname: user.nickname, bio: user.bio, skills: user.skills, needs: user.needs, card_public: Boolean(user.card_public), ...input });
       await run(env.DB, 'UPDATE members SET nickname=?,bio=?,skills=?,needs=?,card_public=?,updated_at=? WHERE id=?', d.nickname, d.bio, d.skills, d.needs, Number(d.cardPublic), now(), user.id);
@@ -237,7 +246,11 @@ async function route(request, env) {
     if (input.finalize !== true || !validFinalAvatar(input.avatar)) fail(400, '请完成头像与个人资料，并确认一次性保存');
     const d = validateProfile(input), stamp = now();
     const result = await run(env.DB, 'UPDATE members SET nickname=?,bio=?,skills=?,needs=?,avatar_json=?,card_public=?,updated_at=?,profile_completed_at=? WHERE id=? AND profile_completed_at IS NULL', d.nickname, d.bio, d.skills, d.needs, d.avatar, d.cardPublic === undefined ? user.card_public : Number(d.cardPublic), stamp, stamp, user.id);
-    if (!result.meta.changes) fail(409, '头像已确认，不能修改或重新生成');
+    if (!result.meta.changes) {
+      const saved = await first(env.DB, 'SELECT * FROM members WHERE id=?', user.id);
+      if (finalProfileMatches(saved, d)) return json({ member: profile(saved, true), next: loginDestination(env.DB, user.id) });
+      fail(409, '头像已确认，不能修改或重新生成');
+    }
     return json({ member: profile(await first(env.DB, 'SELECT * FROM members WHERE id=?', user.id), true), next: loginDestination(env.DB, user.id) });
   }
   if (method === 'GET' && p === '/api/members') {

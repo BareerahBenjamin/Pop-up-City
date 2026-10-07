@@ -13,12 +13,42 @@ function modal(html){$('#modal-content').innerHTML=html;if(!$('#modal').open)$('
 function close(){if($('#modal').open)$('#modal').close()}
 async function api(path,options={}){
   const headers={'Accept':'application/json',...(options.body?{'Content-Type':'application/json'}:{})};
-  const response=await fetch(path,{credentials:'same-origin',...options,headers:{...headers,...options.headers},body:options.body?JSON.stringify(options.body):undefined});
-  const data=await response.json().catch(()=>({}));
+  let response;
+  try{response=await fetch(path,{credentials:'same-origin',...options,headers:{...headers,...options.headers},body:options.body?JSON.stringify(options.body):undefined})}
+  catch{throw Object.assign(new Error('网络连接中断，填写内容已保留，请检查网络后重试。'),{network:true})}
+  let data;try{data=await response.json()}catch{if(response.ok)throw Object.assign(new Error('未完整收到服务器响应，填写内容已保留，请重试。'),{network:true});data={}};
   if(!response.ok){const error=new Error(data.error||`请求未完成（${response.status}）`);error.status=response.status;throw error;}
   return data;
 }
-async function loadMe(){try{state.me=(await api('/api/me')).member}catch(error){if(!/请先登录/.test(error.message))console.warn('session unavailable',error);state.me=null}}
+async function loadMe(){try{state.me=(await api('/api/me')).member;restoreProfileDraft(state.me)}catch(error){if(error.status!==401)throw error;state.me=null;setupDraft=null;document.querySelector('#planet-frame')?.remove()}}
+function profileDraftKey(id){return 'herstory:profile-draft:'+id}
+function clearProfileDraft(id){try{sessionStorage.removeItem(profileDraftKey(id))}catch{}}
+function restoreProfileDraft(member){
+  if(!member)return;
+  if(member.avatar_locked){clearProfileDraft(member.id);return;}
+  if(setupDraft?.owner===member.id)return;
+  try{
+    const raw=sessionStorage.getItem(profileDraftKey(member.id));if(!raw||raw.length>5000)return;
+    const draft=JSON.parse(raw);if(draft.owner!==member.id||!['nickname','bio','skills','needs'].every(key=>typeof draft[key]==='string')||typeof draft.card_public!=='boolean')return;
+    setupDraft={owner:member.id,nickname:draft.nickname,bio:draft.bio,skills:draft.skills,needs:draft.needs,card_public:draft.card_public};
+    if(draft.avatar?.release===catalog.release&&draft.avatar.selection&&typeof draft.avatar.selection==='object')setupDraft.avatar=draft.avatar;
+  }catch{}
+}
+function persistProfileDraft(form){
+  if(!state.me||state.me.avatar_locked||form?.dataset.admin==='1')return;
+  if(form){const data=new FormData(form);setupDraft={...(setupDraft?.owner===state.me.id?setupDraft:{}),owner:state.me.id,...Object.fromEntries(['nickname','bio','skills','needs'].map(key=>[key,String(data.get(key)||'').trim()])),card_public:data.has('card_public')}}
+  if(setupDraft?.owner!==state.me.id)return;
+  const {owner,nickname,bio,skills,needs,card_public,avatar}=setupDraft;
+  try{sessionStorage.setItem(profileDraftKey(owner),JSON.stringify({owner,nickname,bio,skills,needs,card_public,avatar}))}catch{}
+}
+async function finishOwnProfileSave(result,body){
+  state.me=result.member;clearProfileDraft(result.member.id);close();setupDraft=null;avatarEditor=null;
+  location.hash=new URL(body.finalize?(result.next||'/#planet/welcome'):'/#me',location.origin).hash;
+  await render();toast(body.finalize?'头像已确认，资料已保存':'个人资料已保存');
+  // Follow-up lists must not turn a confirmed save into an apparent failure.
+  refresh().catch(()=>toast('资料已保存，部分页面内容暂未加载，请稍后刷新。'));
+}
+document.addEventListener('input',event=>{const form=event.target.closest('form');if(form&&['profile-setup-form','profile-form'].includes(form.id))persistProfileDraft(form)});
 async function loadEvents(){state.events=(await api('/api/events')).events}
 async function loadTasks(){state.tasks=(await api('/api/tasks')).tasks}
 async function loadMembers(){state.members=(await api('/api/members')).members}
@@ -157,7 +187,7 @@ async function renderAvatarEditor(){
 }
 $('#modal').addEventListener('close',()=>{if(!$('#modal').open){avatarEditor=null;++avatarPaintVersion;++posterVersion}});
 async function performAction(button){const a=button.dataset.action,id=button.dataset.id;if(await handleGameJamAction(button))return;
-if(a==='planet-start'){await api('/api/herstory/planet-onboarding',{method:'POST',body:{}});location.hash='#planet';return}if(a==='planet-setup'){await api('/api/herstory/planet-onboarding',{method:'POST',body:{}});location.hash='#setup';return}if(a==='reload-planet'){render();return}if(a==='revise-avatar'){const form=$('#profile-form'),data=new FormData(form);Object.assign(setupDraft,{nickname:String(data.get('nickname')),bio:String(data.get('bio')),skills:String(data.get('skills')),needs:String(data.get('needs')),card_public:data.has('card_public')});showAvatarEditor();return}if(a==='close'){close();return}if(a==='account'){if(state.me)location.hash='#me';else showLogin();return}if(a==='login'){showLogin();return}if(a==='logout'){document.querySelector('#planet-frame')?.remove();setupDraft=null;broadcastSessionChange();await mutation(()=>api('/api/auth/logout',{method:'POST'}),'已退出登录');location.hash='#events';return}
+if(a==='planet-start'){await api('/api/herstory/planet-onboarding',{method:'POST',body:{}});location.hash='#planet';return}if(a==='planet-setup'){await api('/api/herstory/planet-onboarding',{method:'POST',body:{}});location.hash='#setup';return}if(a==='reload-planet'){render();return}if(a==='revise-avatar'){const form=$('#profile-form'),data=new FormData(form);Object.assign(setupDraft,{nickname:String(data.get('nickname')),bio:String(data.get('bio')),skills:String(data.get('skills')),needs:String(data.get('needs')),card_public:data.has('card_public')});persistProfileDraft();showAvatarEditor();return}if(a==='close'){close();return}if(a==='account'){if(state.me)location.hash='#me';else showLogin();return}if(a==='login'){showLogin();return}if(a==='logout'){if(state.me)clearProfileDraft(state.me.id);document.querySelector('#planet-frame')?.remove();setupDraft=null;broadcastSessionChange();await mutation(()=>api('/api/auth/logout',{method:'POST'}),'已退出登录');location.hash='#events';return}
 if(await handleEventTools(button))return;
 if(a==='remove-event-cover'){removeEventCover();return}
 if(a==='new-event'){if(requireLogin())showEventForm(null);return}if(a==='edit-event'){if(requireLogin())showEventForm(state.events.find(e=>e.id===id));return}if(a==='new-task'){if(requireLogin())showTaskForm(null);return}if(a==='edit-task'){if(requireLogin())showTaskForm(state.tasks.find(t=>t.id===id));return}
@@ -188,7 +218,7 @@ if(a==='save-avatar'){
   editor.saving=true;button.disabled=true;
   try{
     setupDraft.avatar={release:catalog.release,selection:{...editor.selection}};
-    showFinalProfileForm();
+    persistProfileDraft();showFinalProfileForm();
   }catch(error){if(avatarEditor===editor){$('#form-error').textContent=error.message;editor.saving=false;button.disabled=false}}
   return;
 }
@@ -208,19 +238,24 @@ if(a==='toggle-official'){const e=state.events.find(e=>e.id===id);await mutation
 if(a==='set-event-status'){const status=button.dataset.status;if(status==='rejected'||status==='cancelled'){showReason(id,status);return}await mutation(()=>api(`/api/admin/events/${id}`,{method:'PATCH',body:{status}}),'活动状态已更新');return}
 }
 document.addEventListener('click',event=>{const button=event.target.closest('[data-action]');if(button){event.preventDefault();performAction(button).catch(error=>toast(error.message))}});
-document.addEventListener('submit',async event=>{const form=event.target;if(!['login-request-form','login-code-form','profile-setup-form','profile-form','event-form','task-form','import-form','event-status-form','pin-form','growth-event-form','growth-review-form','growth-correction-form'].includes(form.id))return;event.preventDefault();if(form.dataset.busy)return;form.dataset.busy='1';const data=new FormData(form);
+document.addEventListener('submit',async event=>{const form=event.target;if(!['login-request-form','login-code-form','profile-setup-form','profile-form','event-form','task-form','import-form','event-status-form','pin-form','growth-event-form','growth-review-form','growth-correction-form'].includes(form.id))return;event.preventDefault();if(form.dataset.busy)return;form.dataset.busy='1';const data=new FormData(form);const profileButton=form.id==='profile-form'?form.querySelector('button.btn.wide'):null,profileButtonLabel=profileButton?.textContent;if(profileButton){profileButton.disabled=true;profileButton.textContent='正在保存…';form.setAttribute('aria-busy','true');formError(form,{message:''})}
 try{
 if(form.id.startsWith('growth-')){await submitGrowthForm(form,data)}
 else if(form.id==='login-request-form'){const email=String(data.get('email')).trim();await api('/api/auth/request',{method:'POST',body:{email}});showCode(email)}
 else if(form.id==='login-code-form'){const result=await api('/api/auth/verify',{method:'POST',body:{email:form.dataset.email,code:String(data.get('code')).trim()}});close();setupDraft=null;broadcastSessionChange();await refresh();location.hash=new URL(result.next||'/#me',location.origin).hash;toast('登录成功')}
-else if(form.id==='profile-setup-form'){setupDraft={...state.me,...(setupDraft?.owner===state.me.id?setupDraft:{}),owner:state.me.id,nickname:String(data.get('nickname')).trim(),bio:String(data.get('bio')).trim(),skills:String(data.get('skills')).trim(),needs:String(data.get('needs')).trim(),card_public:data.has('card_public')};showAvatarEditor()}
-else if(form.id==='profile-form'){const body={nickname:String(data.get('nickname')).trim(),bio:String(data.get('bio')).trim(),skills:String(data.get('skills')).trim(),needs:String(data.get('needs')).trim(),card_public:data.has('card_public')};if(form.dataset.finalize==='1'){body.avatar=setupDraft?.avatar;body.finalize=true;}const result=await api(form.dataset.admin==='1'?`/api/admin/members/${form.dataset.id}`:'/api/me',{method:'PATCH',body});close();setupDraft=null;await refresh();location.hash=new URL(result.next||'/#me',location.origin).hash;toast(form.dataset.finalize==='1'?'头像已确认，资料已保存':'个人资料已保存')}
+else if(form.id==='profile-setup-form'){setupDraft={...state.me,...(setupDraft?.owner===state.me.id?setupDraft:{}),owner:state.me.id,nickname:String(data.get('nickname')).trim(),bio:String(data.get('bio')).trim(),skills:String(data.get('skills')).trim(),needs:String(data.get('needs')).trim(),card_public:data.has('card_public')};persistProfileDraft();showAvatarEditor()}
+else if(form.id==='profile-form'){
+ const body={nickname:String(data.get('nickname')).trim(),bio:String(data.get('bio')).trim(),skills:String(data.get('skills')).trim(),needs:String(data.get('needs')).trim(),card_public:data.has('card_public')};
+ if(form.dataset.finalize==='1'){persistProfileDraft(form);body.avatar=setupDraft?.avatar;body.finalize=true;}
+ if(form.dataset.admin==='1'){await api(`/api/admin/members/${form.dataset.id}`,{method:'PATCH',body});close();await refresh();toast('个人资料已保存')}
+ else{const result=await HerstoryProfileSave.save((path,options={})=>api(path,{...options,signal:AbortSignal.timeout(10000)}),form.dataset.id,body);await finishOwnProfileSave(result,body)}
+}
 else if(form.id==='event-form'){if(form._coverReading)throw new Error('请等待封面读取完成');if(form._coverInvalid){$('#event-cover-file').focus();throw new Error('请重新选择有效的封面，或点击移除封面');}const start=new Date(String(data.get('start'))+'+08:00').getTime()/1000,end=new Date(String(data.get('end'))+'+08:00').getTime()/1000;if(!Number.isInteger(start)||!Number.isInteger(end)||end<=start)throw new Error('结束时间应晚于开始时间');const body={title:String(data.get('title')).trim(),description:String(data.get('description')).trim(),category:String(data.get('category')).trim(),location:String(data.get('location')).trim(),starts_at:start,ends_at:end,capacity:Number(data.get('capacity')),volunteer_capacity:Number(data.get('volunteer_capacity'))};if(form._coverChange!==undefined)body.cover=form._coverChange;if(state.me.role==='admin')body.official=data.has('official');const existing=form.dataset.id;const result=await api(existing?`/api/events/${existing}`:'/api/events',{method:existing?'PATCH':'POST',body});close();await refresh();location.hash=`#event/${existing||result.event.id}`;toast(state.me.role==='admin'?'活动已保存，可生成海报分享':'活动已提交审核，可先生成草稿海报');if(!existing)showEventPoster(result.event)}
 else if(form.id==='task-form'){const deadline=new Date(String(data.get('deadline'))+'+08:00').getTime()/1000;if(!Number.isInteger(deadline))throw new Error('请填写有效期限');const body={title:String(data.get('title')).trim(),description:String(data.get('description')).trim(),category:String(data.get('category')).trim(),location:String(data.get('location')).trim(),deadline,capacity:Number(data.get('capacity'))};await api(form.dataset.id?`/api/tasks/${form.dataset.id}`:'/api/tasks',{method:form.dataset.id?'PATCH':'POST',body});close();await refresh();location.hash='#tasks';toast('任务已保存')}
 else if(form.id==='import-form'){const lines=String(data.get('rows')).trim().split(/\r?\n/).filter(Boolean);if(lines.length>200)throw new Error('每次最多导入 200 位成员');const members=lines.map((line,index)=>{const parts=line.split(',').map(x=>x.trim());if(parts.length!==2||!parts[0]||!parts[1])throw new Error(`第 ${index+1} 行须为“邮箱,昵称”`);return {email:parts[0],nickname:parts[1]}});const result=await api('/api/admin/members/import',{method:'POST',body:{members}});form.reset();await refresh();toast(`导入 ${result.imported} 位，跳过 ${result.skipped} 位重复成员`)}
 else if(form.id==='event-status-form'){await api(`/api/admin/events/${form.dataset.id}`,{method:'PATCH',body:{status:form.dataset.status,reason:String(data.get('reason')).trim()}});close();await refresh();toast('活动状态已更新')}
 else if(form.id==='pin-form'){await api(`/api/admin/events/${form.dataset.id}/checkin-pin`,{method:'PUT',body:{pin:String(data.get('pin')).trim()}});close();toast('签到口令已保存')}
-}catch(error){if(form.id==='profile-form'&&form.dataset.finalize==='1'&&error.status===409){close();setupDraft=null;await refresh();location.hash='#me';toast('头像已经确认，请在主页查看')}else formError(form,error)}finally{delete form.dataset.busy}
+}catch(error){if(form.id==='profile-form'&&error.member?.id===state.me?.id)state.me=error.member;formError(form,error)}finally{delete form.dataset.busy;if(profileButton?.isConnected){profileButton.disabled=false;profileButton.textContent=profileButtonLabel;form.removeAttribute('aria-busy')}}
 });
 window.addEventListener('hashchange',event=>{interestRouteChanged(event);window.scrollTo({top:0,behavior:'instant'});render()});
 refresh().catch(error=>{$('#main').innerHTML=empty('暂时无法连接活动服务，请稍后刷新。');$('#site-status').textContent='连接暂不可用';console.error(error)});
