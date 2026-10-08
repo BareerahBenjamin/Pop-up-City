@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID, createHash } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
+import sharp from 'sharp';
 import { openDatabase, migrate } from '../database.js';
 import { loadConfig } from '../config.js';
 import { createApplication } from '../server.js';
@@ -42,6 +43,23 @@ try{
  assert.equal(await frame.locator('body').evaluate(()=>window.HerstoryApp.getState().snapshot.connections.length),1);
  await page.waitForFunction(()=>!document.querySelector('#toast').classList.contains('visible'));
  await page.screenshot({path:out+'/planet-desktop.png',fullPage:true});
+ const card=frame.locator('#planet-card');
+ async function checkCard(mode,label,downloadFile=false){
+  await card.getByRole('button',{name:mode==='2d'?'2D 像素':'3D 星球',exact:true}).click();
+  await card.locator('#card-preview').waitFor({state:'visible'});await frame.locator('body').evaluate(()=>new Promise(resolve=>requestAnimationFrame(resolve)));
+  const image=await card.locator('#card-preview').boundingBox(),dialog=await card.boundingBox(),button=await card.locator('#save-card').boundingBox(),close=await card.locator('#close-card').boundingBox();
+  assert.ok(image.width<=301);assert.ok(image.y>=close.y+close.height-1);assert.ok(image.y+image.height<=button.y+1,JSON.stringify({image,button}));
+  assert.ok(image.x>=dialog.x&&image.x+image.width<=dialog.x+dialog.width+1);
+  assert.ok(await card.evaluate(e=>e.scrollHeight<=e.clientHeight+1));
+  assert.equal(await card.getByRole('button',{name:mode==='2d'?'2D 像素':'3D 星球',exact:true}).getAttribute('aria-pressed'),'true');
+  await page.screenshot({path:out+'/save-preview-'+label+'.png',fullPage:true});
+  if(downloadFile){const downloading=page.waitForEvent('download');await card.locator('#save-card').click();const file=await downloading,path=out+'/'+file.suggestedFilename();await file.saveAs(path);const metadata=await sharp(path).metadata();assert.equal(metadata.format,mode==='2d'?'png':'jpeg');assert.equal(metadata.width,mode==='2d'?240:1080);assert.equal(metadata.height,mode==='2d'?320:1440);
+   if(mode==='2d'){const expected=await frame.locator('body').evaluate(()=>Array.from(window.HerstoryPixelRenderer.renderFrame(window.HerstoryPixelDisplay.getState(),{width:240,height:320}).rgba));assert.deepEqual(Array.from(await sharp(path).ensureAlpha().raw().toBuffer()),expected);}
+  }
+ }
+ async function closeCard(){await card.locator('#close-card').click();await page.waitForFunction(()=>!document.querySelector('#planet-frame').contentWindow.history.state?.herstoryOverlay);}
+ await frame.getByRole('button',{name:'相机',exact:true}).click();await checkCard('3d','3d-desktop',true);await checkCard('2d','2d-desktop',true);await closeCard();
+
  async function assertFits(){const rect=await page.locator('#planet-frame').boundingBox(),bounds=await page.locator('.festival-footer').boundingBox();assert.ok(rect.y+rect.height<=bounds.y+1,JSON.stringify({rect,bounds}));assert.ok(await frame.locator('body').evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1));}
  await assertFits();await frame.getByRole('button',{name:'2D 像素',exact:true}).click();await frame.locator('#host-pixel-canvas').waitFor({state:'visible'});
  assert.equal(await frame.getByRole('button',{name:'2D 像素',exact:true}).getAttribute('aria-pressed'),'true');
@@ -56,8 +74,8 @@ try{
  frame=page.frameLocator('#planet-frame');assert.deepEqual(await frame.locator('body').evaluate(()=>window.HerstoryIdentity.getProfile()),identity);
  await assertFits();await page.screenshot({path:out+'/planet-3d-mobile.png',fullPage:true});
  await frame.getByRole('button',{name:'2D 像素',exact:true}).click();await frame.locator('#host-pixel-canvas').waitFor({state:'visible'});await assertFits();
- await page.screenshot({path:out+'/planet-2d-mobile.png',fullPage:true});
- await page.setViewportSize({width:375,height:667});await assertFits();await page.screenshot({path:out+'/planet-2d-small-mobile.png',fullPage:true});await frame.getByRole('button',{name:'3D 星球',exact:true}).click();await assertFits();await page.screenshot({path:out+'/planet-3d-small-mobile.png',fullPage:true});await frame.getByRole('button',{name:'2D 像素',exact:true}).click();await page.setViewportSize({width:390,height:844});await page.locator('#planet-frame').scrollIntoViewIfNeeded();await frame.getByRole('button',{name:'星域',exact:true}).click();await page.screenshot({path:out+'/planet-mobile-field.png',fullPage:true});assert.equal(await frame.locator('#host-pixel-view').isVisible(),false);await frame.getByRole('button',{name:'我的星球',exact:true}).click();assert.equal(await frame.locator('#host-pixel-view').isVisible(),true);
+ await page.screenshot({path:out+'/planet-2d-mobile.png',fullPage:true});await frame.getByRole('button',{name:'相机',exact:true}).click();await checkCard('2d','2d-mobile');await checkCard('3d','3d-mobile');await closeCard();
+ await page.setViewportSize({width:375,height:667});await assertFits();await page.screenshot({path:out+'/planet-2d-small-mobile.png',fullPage:true});await frame.getByRole('button',{name:'相机',exact:true}).click();await checkCard('2d','2d-small-mobile');await checkCard('3d','3d-small-mobile');await closeCard();await frame.getByRole('button',{name:'3D 星球',exact:true}).click();await assertFits();await page.screenshot({path:out+'/planet-3d-small-mobile.png',fullPage:true});await frame.getByRole('button',{name:'2D 像素',exact:true}).click();await page.setViewportSize({width:390,height:844});await page.locator('#planet-frame').scrollIntoViewIfNeeded();await frame.getByRole('button',{name:'星域',exact:true}).click();await page.screenshot({path:out+'/planet-mobile-field.png',fullPage:true});assert.equal(await frame.locator('#host-pixel-view').isVisible(),false);await frame.getByRole('button',{name:'我的星球',exact:true}).click();assert.equal(await frame.locator('#host-pixel-view').isVisible(),true);
  await page.getByRole('button',{name:'开始探索我的星球 ↗',exact:true}).click();await page.waitForURL('**/#planet');await page.goto(origin+'/#me');
  await page.locator('.profile-lock-note').waitFor();assert.equal(await page.locator('[data-action=edit-avatar]').count(),0);
  const forbidden=await page.evaluate(async()=>{const r=await fetch('/api/me',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({avatar:{}})});return r.status});assert.equal(forbidden,409);
@@ -72,7 +90,7 @@ try{
  await p2.frameLocator('#planet-frame').locator('body').evaluate(()=>window.HerstoryApp.refresh());
  await p2.getByRole('button',{name:'用邮箱登录 ↗'}).waitFor();assert.equal(await p2.locator('#planet-frame').count(),0);
  assert.deepEqual(errors,[]);
- console.log('PASS: login→personal information→one-time avatar→planet, persistent identity, real connections, website 3D/2D switch and full viewport, mobile layout, editable profile and immutable avatar and expired-session clearing');
+ console.log('PASS: login→personal information→one-time avatar→planet, persistent identity, real connections, website 3D/2D switch, bounded save previews and exact JPEG/PNG downloads, mobile layout, editable profile and immutable avatar and expired-session clearing');
  console.log(out);
  await second.close();await context.close();
 }finally{await browser?.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));db.close();}
