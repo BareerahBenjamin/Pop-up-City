@@ -13,4 +13,17 @@ body{display:flex;flex-direction:column}
 body[data-tab=field]::before,body[data-tab=friends]::before{background-image:none}
 .host-offscreen *,.host-offscreen *::before,.host-offscreen *::after{animation-play-state:paused!important}
 
-#growth-summary{position:fixed;width:min(900px,calc(100% - 24px));max-height:calc(100dvh - 40px);margin:auto;padding:24px;color:#263a2e;background:#f5f5e9;border:1px solid #cbd3bd;border-radius:16px;font:15px/1.7 system-ui;overflow:auto}#growth-summary::backdrop{background:#17211ab3}#growth-summary h2{font-size:20px}#growth-summary ul{padding-left:22px;columns:2}#growth-summary details ul{columns:1}.growth-close{min-height:44px;float:right;padding:6px 12px;border:1px solid #bfc6b2;border-radius:24px}.mine-footer>button:last-child{min-height:44px;padding:8px 16px;text-decoration:underline}@media(max-width:600px){#growth-summary ul{columns:1}}
+/* Keep both representations in the same measured stage. */
+.planet-display-switch{display:none;align-items:center;gap:4px;border:1px solid #cbd3bd;border-radius:24px;padding:3px;background:#e6e7db;flex:none}
+.planet-display-switch button{min-height:44px;padding:8px 14px;border-radius:20px;font-size:13px;color:#354137}
+.planet-display-switch button[aria-pressed=true]{background:#e5d6b3;color:#655026}
+body[data-tab=mine] .planet-display-switch{display:flex}
+.app>.topbar{height:auto;min-height:60px;padding:4px 18px;flex-wrap:wrap;gap:4px 12px}
+.top-meta{margin-left:auto}
+#host-pixel-view{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:12px;z-index:3;background:#f5f5e9}
+#host-pixel-canvas{display:block;max-width:100%;max-height:100%;width:auto;height:100%;aspect-ratio:3/4;object-fit:contain;image-rendering:pixelated}
+body[data-tab=mine][data-planet-mode="2d"] #world,body[data-tab=mine][data-planet-mode="2d"] .world-tools,body[data-tab=mine][data-planet-mode="2d"] #world-error{display:none}
+.app>.bottom-nav{margin:4px auto 8px}
+.app>.bottom-nav button{min-height:48px}
+@media(max-width:600px){.app>.topbar{padding-inline:12px}.planet-display-switch{margin:0 auto}.location h1{font-size:16px}.top-meta{font-size:11px}.planet-display-switch button{padding-inline:18px}.host-growth-note{padding:5px 12px}}
+@media(max-width:600px) and (max-height:740px){body[data-tab=mine] .topbar .location{display:none}.app>.topbar{min-height:52px;flex-wrap:nowrap}.planet-display-switch{margin:0}.top-meta{white-space:normal;text-align:right}.app>.bottom-nav button{flex-direction:row;min-height:44px;font-size:12px;gap:4px}.app>.bottom-nav button svg{width:16px;height:16px}.world-tools{flex-direction:row;right:8px;bottom:8px;gap:4px}.world-tools #planet-camera{width:44px;height:44px}.world-tools button{background:#e6e7db}}

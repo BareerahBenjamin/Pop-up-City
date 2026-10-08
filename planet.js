@@ -1,7 +1,7 @@
 import { randomInt, randomUUID, createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
-import { settlePlanetGrowth } from './planet-growth.js';
+import { settlePlanetGrowth, derivePixelPlanet } from './planet-growth.js';
 
 const palettes = ['green', 'pink', 'blue', 'apricot'];
 const template = readFileSync(new URL('./vendor/planet/frontend/ui-design/Herstory-星域-H5.html', import.meta.url), 'utf8');
@@ -45,6 +45,7 @@ export function planetSnapshotInTransaction(db, memberId) {
       activated: true, // Identity assigned; not a grant of opening-event assets.
       day: 0, // Keep the upstream date-driven growth demo OFF until real entitlements exist.
       residentCount: Math.max(1, Number(population)), connections, growth,
+      pixelPlanet: derivePixelPlanet(db, memberId, identity.palette_id, connections),
       integration: { growthStatus: growth.status, checkinCount: growth.checkinCount,
         latestCheckinAt: records.latest == null ? null : iso(records.latest),
         relationshipSource: 'verified-social-code-and-hardware', displayName: member.nickname }
@@ -53,7 +54,7 @@ export function planetSnapshotInTransaction(db, memberId) {
     const revision = identity.revision + Number(hash !== identity.snapshot_hash);
     if (!Number.isSafeInteger(revision)) throw new Error('Planet revision overflow');
     if (revision !== identity.revision) sql.prepare('UPDATE member_planets SET revision=?,snapshot_hash=? WHERE member_id=?').run(revision, hash, memberId);
-    return { ...data, revision };
+    return { ...data, revision, pixelPlanet: { ...data.pixelPlanet, stateVersion: revision } };
 }
 
 export function completePlanetOnboarding(db, memberId) {

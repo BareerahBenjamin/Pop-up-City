@@ -33,7 +33,7 @@ test('planet identity persists, cannot be reassigned, rejects anonymous reads an
   const many=await Promise.all(Array.from({length:20},()=>f.call('/api/herstory/planet-state?userId='+b.id,a)));
   const first=many[0].data;
   assert.equal(new Set(many.map(r=>r.data.planetId)).size,1);assert.equal(first.userId,a.id);
-  assert.equal(first.day,0);assert.equal('pixelPlanet' in first,false);
+  assert.equal(first.day,0);assert.equal(first.pixelPlanet.paletteId,first.paletteId);assert.equal(first.pixelPlanet.aiStage,0);assert.equal(first.pixelPlanet.stateVersion,first.revision);assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM hardware_planet_frames').get().n,0);
   assert.equal(first.integration.growthStatus,'pending_rules');
   const other=(await f.call('/api/herstory/planet-state',b)).data;assert.notEqual(first.planetId,other.planetId);
   const secondConnection=openDatabase(f.path);try {assert.deepEqual(planetSnapshot(secondConnection,a.id),first);}finally{secondConnection.close();}

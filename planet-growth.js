@@ -1,4 +1,8 @@
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+const require=createRequire(import.meta.url);
+const {derivePixelProgress}=require('./vendor/planet/backend/pixel-planet/service.cjs');
+const pixelRules=require('./vendor/planet/backend/pixel-planet/rules.json');
 import { createHash, randomUUID } from 'node:crypto';
 const ruleBytes=readFileSync(new URL('./vendor/planet/backend/activity-config/activity-config.json',import.meta.url));
 const manifestBytes=readFileSync(new URL('./config/planet_asset_manifest_v1.json',import.meta.url));
@@ -13,6 +17,16 @@ const releaseRow=db=>db.raw.prepare('SELECT * FROM planet_growth_release').get()
 function assertRelease(row){if(row&&Object.keys(release).some(key=>row[key]!==release[key]))throw Error('Planet published release does not match this build');}
 export function validPlanetCheckins(db,memberId){return db.raw.prepare(`SELECT c.event_id,c.checked_at,e.title FROM checkins c JOIN events e ON e.id=c.event_id
  WHERE c.member_id=? AND e.status='published' AND COALESCE((SELECT valid FROM planet_fact_corrections f WHERE f.member_id=c.member_id AND f.kind='checkin' AND f.event_id=c.event_id ORDER BY f.id DESC LIMIT 1),1)=1 ORDER BY c.checked_at,c.event_id`).all(memberId)}
+// Shared read-only projection for website and hardware; hardware alone persists frame versions.
+export function derivePixelPlanet(db,memberId,paletteId,connections){
+ const mappings=db.raw.prepare('SELECT * FROM planet_activity_catalog_map').all();
+ const activities=mappings.map(m=>({...planetRules.activities.find(a=>a.activity_id===m.catalog_activity_id),canonical_session_id:m.activity_id,
+  enabled:db.raw.prepare('SELECT status FROM events WHERE id=?').get(m.activity_id)?.status==='published'}));
+ const facts=validPlanetCheckins(db,memberId).flatMap(f=>mappings.filter(m=>m.activity_id===f.event_id).map(m=>({user_id:memberId,campaign_id:pixelRules.campaignId,
+  activity_id:m.catalog_activity_id,canonical_session_id:f.event_id,revision:1,status:'valid',checked_in_at:new Date(f.checked_at*1000).toISOString(),updated_at:new Date(f.checked_at*1000).toISOString()})));
+ const {issues,...progress}=derivePixelProgress({userId:memberId,campaignId:pixelRules.campaignId,activities,checkins:facts});
+ return {paletteId,...progress,friendIds:connections.map(f=>f.id).sort()};
+}
 function validRoles(db,memberId){return db.raw.prepare(`SELECT r.* FROM planet_role_reviews r LEFT JOIN events e ON e.id=r.event_id
  WHERE r.member_id=? AND (r.kind='volunteer' OR (e.status='published' AND e.host_id=r.member_id))
  AND COALESCE((SELECT valid FROM planet_fact_corrections f WHERE f.member_id=r.member_id AND f.kind='role' AND f.review_id=r.id ORDER BY f.id DESC LIMIT 1),1)=1 ORDER BY r.reviewed_at,r.id`).all(memberId)}

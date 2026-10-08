@@ -1,12 +1,10 @@
-import { validPlanetCheckins, configurePlanetEvent } from './planet-growth.js';
+import { derivePixelPlanet, configurePlanetEvent } from './planet-growth.js';
 import { createHash, createHmac, timingSafeEqual, randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { planetSnapshotInTransaction } from './planet.js';
 
 const require = createRequire(import.meta.url);
-const { derivePixelProgress } = require('./vendor/planet/backend/pixel-planet/service.cjs');
-const rules = require('./vendor/planet/backend/pixel-planet/rules.json');
 const renderer = require('./vendor/planet/frontend/ui-design/pixel-planet-renderer.js');
 const catalog = JSON.parse(readFileSync(new URL('./vendor/planet/backend/activity-config/activity-config.json', import.meta.url))).activities;
 const now = () => Math.floor(Date.now() / 1000);
@@ -116,15 +114,7 @@ function friend(db, reporter, data) {
 }
 
 function pixelState(db, memberId, paletteId, connections) {
-  const mappings = db.raw.prepare('SELECT * FROM planet_activity_catalog_map').all();
-  const activities = mappings.map(m => ({ ...catalog.find(a => a.activity_id === m.catalog_activity_id), canonical_session_id: m.activity_id,
-    enabled: db.raw.prepare('SELECT status FROM events WHERE id=?').get(m.activity_id).status === 'published' }));
-  const facts = validPlanetCheckins(db,memberId)
-    .flatMap(f => mappings.filter(m => m.activity_id === f.event_id).map(m => ({ user_id: memberId, campaign_id: rules.campaignId,
-      activity_id: m.catalog_activity_id, canonical_session_id: f.event_id, revision: 1, status: 'valid',
-      checked_in_at: new Date(f.checked_at * 1000).toISOString(), updated_at: new Date(f.checked_at * 1000).toISOString() })));
-  const { issues, ...progress } = derivePixelProgress({ userId: memberId, campaignId: rules.campaignId, activities, checkins: facts });
-  const state = { paletteId, ...progress, friendIds: connections.map(f => f.id).sort() };
+  const state = derivePixelPlanet(db, memberId, paletteId, connections);
   const sourceHash = hash(JSON.stringify(state)), old = db.raw.prepare('SELECT * FROM hardware_pixel_states WHERE member_id=?').get(memberId);
   const stateVersion = (old?.state_version || 0) + Number(sourceHash !== old?.source_hash);
   if (!Number.isSafeInteger(stateVersion)) throw new Error('Pixel version overflow');
