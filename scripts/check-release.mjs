@@ -5,6 +5,9 @@ import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import sharp from 'sharp';
 import { openDatabase, migrate, checkSchema } from '../database.js';
+import { nameBitmap } from '../hardware-cloud/name-bitmap.mjs';
+// Load the API dependency graph too, so missing deployment modules fail early.
+await import('../api.js');
 const require = createRequire(import.meta.url);
 const renderer = require('../vendor/planet/frontend/ui-design/pixel-planet-renderer.js');
 const [major, minor] = process.versions.node.split('.').map(Number);
@@ -37,7 +40,11 @@ try {
   assert.equal(db.raw.prepare('PRAGMA foreign_key_check').all().length, 0);
   const png = await sharp({ create: { width: 2, height: 2, channels: 3, background: '#ffffff' } }).png().toBuffer();
   assert.equal((await sharp(png).metadata()).width, 2);
+  assert.equal(read('assets/fonts/NotoSansCJKsc-Regular.otf').subarray(0, 4).toString(), 'OTTO');
+  const name = await nameBitmap('签到测试');
+  assert.match(name, /^[0-9a-f]{1536}$/);
+  assert.ok(Buffer.from(name, 'hex').some(byte => byte !== 0), 'Chinese name bitmap must contain pixels');
   console.log(JSON.stringify({ status: 'ok', node: process.version, platform: process.platform, arch: process.arch,
-    migrations: db.raw.prepare('SELECT COUNT(*) n FROM schema_migrations').get().n,
+    migrations: db.raw.prepare('SELECT COUNT(*) n FROM schema_migrations').get().n, nameBitmap: 'ok',
     modelVersion: manifest.modelVersion, pixelFrame: { width: 240, height: 320, format: 'RGB565', bytes: 153600, byteOrders: ['little','big'], storage: 'SQLite BLOB' }, sharp: 'ok' }, null, 2));
 } finally { db.close(); }

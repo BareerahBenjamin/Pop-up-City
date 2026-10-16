@@ -52,7 +52,7 @@ function saveInteraction(db, data, type, reporter, a, b, activity, payload, rece
   db.raw.prepare('INSERT INTO hardware_interactions VALUES(?,?,?,?,?,?,?,?,?,?)')
     .run(data.interaction_id, type, reporter.id, a.id, b.id, activity, data.occurred_at, now(), hash(payload), JSON.stringify(receipt));
 }
-function checkin(db, reporter, data) {
+export function checkin(db, reporter, data) {
   common(data);
   if (reporter.id !== id(data.station_device_id)) fail(403, 'WRONG_REPORTER', '只能由本次签到板提交');
   const station = device(db, data.station_device_id, 'checkin'), board = device(db, data.user_device_id, 'user');
@@ -87,7 +87,7 @@ function checkin(db, reporter, data) {
     return receipt;
   });
 }
-function friend(db, reporter, data) {
+export function friend(db, reporter, data) {
   common(data);
   const a = device(db, data.device_a_id, 'user'), b = device(db, data.device_b_id, 'user');
   if (a.id >= b.id || a.member_id === b.member_id) fail(400, 'INVALID_PAIR', '设备 ID 必须排序且属于不同用户');

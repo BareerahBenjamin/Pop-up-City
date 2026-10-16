@@ -26,6 +26,7 @@ export function loadConfig(env = process.env) {
     production, host, port, origin: origin.origin,
     secureCookies: origin.protocol === 'https:',
     pepper: env.AUTH_PEPPER,
+    deviceEnrollmentKey: env.DEVICE_ENROLLMENT_KEY || '',
     databasePath: resolve(env.DATABASE_PATH || './data/popup-city.sqlite'),
     mailMode, fromEmail: env.FROM_EMAIL || 'info@0xherstory.cn',
     smtp: {
