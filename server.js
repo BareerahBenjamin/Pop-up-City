@@ -41,7 +41,7 @@ async function serveStatic(req, res, pathname, root) {
 }
 
 export function createApplication(config, { db, mailer, staticRoot = publicDirectory }) {
-  const env = { DB: db, EMAIL: mailer, FROM_EMAIL: config.fromEmail, AUTH_PEPPER: config.pepper, PUBLIC_ORIGIN: config.origin, SECURE_COOKIES: config.secureCookies };
+  const env = { DB: db, EMAIL: mailer, FROM_EMAIL: config.fromEmail, AUTH_PEPPER: config.pepper, DEVICE_ENROLLMENT_KEY: config.deviceEnrollmentKey, PUBLIC_ORIGIN: config.origin, SECURE_COOKIES: config.secureCookies };
   // 限制正在处理的请求数量；不持久化 IP 或请求内容。
   let active = 0, eventWrites = 0;
   const server = createServer(async (req, res) => {
@@ -59,7 +59,7 @@ export function createApplication(config, { db, mailer, staticRoot = publicDirec
         if (eventWrites >= 2) { req.resume(); return respond(res, 503, '活动正在保存，请稍后重试'); }
         eventWrite = true; eventWrites++;
       }
-      if (!url.pathname.startsWith('/api/') && url.pathname !== '/healthz' && url.pathname !== '/login' && url.pathname !== '/planet') {
+      if (!url.pathname.startsWith('/local/') && !url.pathname.startsWith('/api/') && url.pathname !== '/healthz' && url.pathname !== '/login' && url.pathname !== '/planet') {
         req.resume();
         return await serveStatic(req, res, url.pathname, resolve(staticRoot));
       }

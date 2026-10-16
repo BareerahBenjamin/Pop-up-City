@@ -1,3 +1,5 @@
+import { enrollmentRoute, enrollmentAdminRoute } from './device-enrollment.js';
+import { cloudRoute, cloudAdminRoute } from './hardware-cloud.js';
 import { PlanetGrowthError, growthTransaction, activatePlanetGrowth, configurePlanetEvent, reviewPlanetRole, correctPlanetFact, planetGrowthAdmin } from './planet-growth.js';
 import { planetSnapshot, planetSnapshotInTransaction, planetDocument, completePlanetOnboarding, loginDestination } from './planet.js';
 import { validFinalAvatar } from './profile.js';
@@ -173,9 +175,11 @@ async function route(request, env) {
   if (method === 'GET' && p === '/login') return new Response(`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Herstory 登录 · 科技碰瓷节</title><link rel="stylesheet" href="/tokens.css"><link rel="stylesheet" href="/site.css"><link rel="stylesheet" href="/festival.css"></head><body class="login-page"><main><a href="/" aria-label="返回活动首页"><img class="login-brand" src="/assets/series/herstory-logo.png" alt="Herstory" width="586" height="149"></a><h1>Herstory Pop-up City</h1><p id="result" role="status">点击下方按钮完成邮箱登录。</p><button class="btn" id="login">确认登录</button></main><script>document.querySelector('#login').onclick=async()=>{const token=location.hash.slice(1);if(!/^[a-f0-9]{64}$/.test(token)){document.querySelector('#result').textContent='登录链接无效，请重新获取。';return}const r=await fetch('/api/auth/redeem',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});location.hash='';if(r.ok){const data=await r.json();location.replace(data.next||'/#me');return}document.querySelector('#result').textContent='链接已过期或已使用，请重新获取。';document.querySelector('#login').hidden=true}</script></body></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
   if (!env.AUTH_PEPPER || env.AUTH_PEPPER.length < 32) fail(503, '服务尚未配置密钥');
   const origin = env.PUBLIC_ORIGIN ? new URL(env.PUBLIC_ORIGIN).origin : url.origin;
-  if (method !== 'GET' && method !== 'HEAD' && !p.startsWith('/api/device/')) {
+  if (method !== 'GET' && method !== 'HEAD' && !p.startsWith('/api/device/') && !p.startsWith('/local/') && !p.startsWith('/api/device-enrollment/')) {
     if (request.headers.get('origin') !== origin) fail(403, '请求来源不允许');
   }
+  if (p.startsWith('/api/device-enrollment/')) return enrollmentRoute(request,env,url,body);
+  if (p.startsWith('/local/')) return cloudRoute(request, env, url, await deviceFromBearer(request, env), body);
   if (p.startsWith('/api/device/')) return deviceRoute(request, env, url);
   const user = await memberFromCookie(request, env);
   const gameJam = await gameJamRoute(request,env,user,body);
@@ -442,6 +446,10 @@ async function adminRoute(request, env, url, user) {
       return result;
     }));
   }
+  const enrollment = await enrollmentAdminRoute(request,env,url,user,body);
+  if(enrollment)return enrollment;
+  const cloud = await cloudAdminRoute(request, env, url, user, body);
+  if (cloud) return cloud;
   const hardware = await hardwareAdminRoute(request, env, url, user, body);
   if (hardware) return hardware;
   if (method === 'POST' && p === '/api/admin/members/import') {

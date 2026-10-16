@@ -1,0 +1,29 @@
+{
+  "version": "20261016-hardware-formal-a0df41fc",
+  "sha256": "a0df41fc134d16f10286e09ff5f3bb7482f6e1b19bd50bc24282d7cac3ab34a0",
+  "bytes": 18825087,
+  "base_commit": "c6832ce435f03133076ee088a8599099d494a035",
+  "source": "current working tree, including uncommitted hardware integration changes",
+  "tests": {
+    "source": {
+      "passed": 75,
+      "failed": 0
+    },
+    "extracted_package": {
+      "passed": 75,
+      "failed": 0
+    },
+    "release_check": "passed: 13 migrations, RGB565 little/big, Chinese name bitmap",
+    "linux_server_check": "pending"
+  },
+  "deployment": "pending: existing herstory-ops SSH login rejected; awaiting cloud ubuntu terminal diagnostics",
+  "formal_hardware_validation": "pending: production deployment and production device provisioning",
+  "excludes": [
+    ".env",
+    "data",
+    "output",
+    "node_modules",
+    ".git"
+  ],
+  "migration_review": "0012 and 0013 exactly match installed project deployment tool approved SQL"
+}

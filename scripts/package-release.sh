@@ -7,7 +7,9 @@ case "$package_output" in /*) ;; *) echo 'Output must be an absolute path' >&2; 
 if [ -e "$package_output" ]; then echo 'Output exists; choose a new release filename' >&2; exit 1; fi
 COPYFILE_DISABLE=1 tar --no-xattrs --no-acls --exclude='.DS_Store' --exclude='._*' -czf "$package_output" -C "$package_root" \
   package.json package-lock.json server.js api.js config.js database.js covers.js roles.js \
-  mail.js manage.js backup.js planet.js planet-growth.js profile.js hardware.js game-jam.js config vendor public migrations deploy scripts test \
-  README.md deployment_v1.0.md cloud_deployment_v1.0.md rgb565_storage_v1.0.md database_schema_v1.0.md growth_architecture_v1.0.md \
+  mail.js manage.js backup.js planet.js planet-growth.js profile.js hardware.js game-jam.js \
+  device-enrollment.js hardware-cloud.js hardware-cloud assets config vendor public migrations deploy scripts test \
+  device_claim_setup.md device_claim_setup.zh_CN.md hardware_cloud_setup.md hardware_cloud_setup.zh_CN.md \
+  README.md Rae_changes.md deployment_v1.0.md cloud_deployment_v1.0.md rgb565_storage_v1.0.md database_schema_v1.0.md growth_architecture_v1.0.md \
   growth_data_dictionary_v1.0.md planet_integration_v1.0.md game_jam_integration_v1.0.md hardware_api_v1.0.md planet_growth_v1.0.md decision_log_v1.0.md visual_refresh_v1.0.md .env.example .gitignore
 printf '%s\n' "$package_output"

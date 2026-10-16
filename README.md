@@ -151,6 +151,14 @@ node test/browser.mjs
 
 2026-10-07外网检测到kunyuan.site被腾讯云平台跳转至webblock；服务器内部健康正常。平台拦截仍需账号管理员核对实际备案／接入与拦截状态，代码发布不能解除该拦截。新发布必须从外网测试HTTPS，不能只看服务器自身curl。
 
+## 硬件云端接入
+
+硬件交互会话、主持人授权和正式设备配置见 [硬件云端接入说明](hardware_cloud_setup.zh_CN.md)。部署本次版本前需备份并执行新增数据库迁移。
+
+约 100 块个人板的统一固件与后台四位码领用见 [四位领用码绑定](device_claim_setup.zh_CN.md)。
+
+本 fork 的硬件接入改动、验证与发布记录见 [Rae 改动记录](Rae_changes.md)。
+
 ## 协作与合并规则
 
 main 必须通过 PR 合并，GitHub Actions 的 `test` 必须通过，分支须与 main 保持最新；审批数为 0，不要求 Code Owner 或最近一次推送审批，管理员同样受约束。具备 write 权限的协作者可以自行检查、测试并合并自己的 PR。CI 只运行隔离回归与发布自检，不自动部署。
