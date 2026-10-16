@@ -77,12 +77,14 @@ test('four-digit claim preserves leading zero; admin request alone never binds; 
  assert.equal(f.db.raw.prepare('SELECT 1 FROM devices WHERE id=?').get(board.id),undefined);
  state=unwrap(await f.call('/api/device-enrollment/status',board),board);assert.equal(state.request_id,request.data.request_id);assert.equal(state.member_id,f.a.id);
  f.reopen();
- const confirmed=unwrap(await f.call('/api/device-enrollment/confirm',board,{request_id:state.request_id,decision:'accept'}),board);assert.equal(confirmed.state,'bound');assert.equal(confirmed.member_id,f.a.id);
+ const confirmed=unwrap(await f.call('/api/device-enrollment/confirm',board,{request_id:state.request_id,decision:'accept'}),board);assert.equal(confirmed.state,'bound');assert.equal(confirmed.member_id,f.a.id);assert.equal(confirmed.member_name,'测试成员');assert.match(confirmed.member_name_bitmap,/^[a-f0-9]{768}$/);assert.ok(Buffer.from(confirmed.member_name_bitmap,'hex').some(x=>x));
  assert.deepEqual(unwrap(await f.call('/api/device-enrollment/confirm',board,{request_id:state.request_id,decision:'accept'}),board),confirmed);
  assert.equal((await f.call(base+'?request_id='+state.request_id,f.admin)).data.state,'bound');
  const normal=await f.call('/api/device/me',board);assert.equal(normal.status,200);assert.equal(normal.data.member_id,f.a.id);
  assert.equal(f.db.raw.prepare("SELECT COUNT(*) n FROM device_claim_audit WHERE action='bound'").get().n,1);
  assert.ok(!JSON.stringify(request.data).includes(board.token));
+ f.db.raw.prepare('UPDATE members SET nickname=? WHERE id=?').run('Rae 海椰',f.a.id);
+ const renamed=unwrap(await f.call('/api/device-enrollment/status',board),board);assert.equal(renamed.member_name,'Rae 海椰');assert.notEqual(renamed.member_name_bitmap,confirmed.member_name_bitmap);
 });
 test('100 simultaneously issued four-digit codes are unique and initialization requires separate batch authorization',async t=>{
  const f=fixture(t),all=[];
