@@ -3,7 +3,7 @@
 - **版本：** v1.0
 - **负责人：** Herstory 项目维护者
 - **状态：** 网页及保存预览均支持3D／2D切换与完整显示；保留首次资料断线恢复；本次不需数据库迁移
-- **最后更新：** 2026-10-08
+- **最后更新：** 2026-10-15
 
 面向 Herstory 社区的活动、成员和共同生活管理网站。采用 **Node.js + SQLite + 原生 JavaScript/CSS**，同一服务提供页面与 API，活动页面无需额外前端构建；星球源码修改后运行 `npm run build:planet`。
 
@@ -158,3 +158,7 @@ node test/browser.mjs
 约 100 块个人板的统一固件与后台四位码领用见 [四位领用码绑定](device_claim_setup.zh_CN.md)。
 
 本 fork 的硬件接入改动、验证与发布记录见 [whyyt 改动记录](MY_CHANGES.zh_CN.md)。
+
+## 协作与合并规则
+
+main 必须通过 PR 合并，GitHub Actions 的 `test` 必须通过，分支须与 main 保持最新；审批数为 0，不要求 Code Owner 或最近一次推送审批，管理员同样受约束。具备 write 权限的协作者可以自行检查、测试并合并自己的 PR。CI 只运行隔离回归与发布自检，不自动部署。
