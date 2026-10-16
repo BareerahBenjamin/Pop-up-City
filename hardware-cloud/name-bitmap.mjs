@@ -15,13 +15,15 @@ if(!process.env.FONTCONFIG_FILE&&!existsSync('/etc/fonts/fonts.conf')){
 }
 const cache=new Map();
 // A signed 192x32 one-bit name strip avoids a large CJK font in board RAM/Flash.
-export async function nameBitmap(name){
+export async function nameBitmap(name,compact=false){
+ const width=compact?128:192,height=compact?24:32,stride=width/8;
  const text=[...String(name).normalize('NFC')].slice(0,32).join('');
- if(cache.has(text))return cache.get(text);
+ const key=(compact?'header:':'host:')+text;
+ if(cache.has(key))return cache.get(key);
  const escaped=text.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
- const {data,info}=await sharp({text:{text:escaped||'Participant',font:'Noto Sans CJK SC 22',fontfile,rgba:true,width:192,height:32,align:'center',wrap:'char'}}).ensureAlpha().raw().toBuffer({resolveWithObject:true});
- const bits=Buffer.alloc(768);
- const left=Math.floor((192-info.width)/2),top=Math.floor((32-info.height)/2);
- for(let y=0;y<info.height;y++)for(let x=0;x<info.width;x++)if(data[(y*info.width+x)*4+3]>=96){const px=x+left,py=y+top;if(px>=0&&px<192&&py>=0&&py<32)bits[py*24+(px>>3)]|=128>>(px&7);}
- const result=bits.toString('hex');if(cache.size>=256)cache.delete(cache.keys().next().value);cache.set(text,result);return result;
+ const {data,info}=await sharp({text:{text:escaped||'Participant',font:compact?'Noto Sans CJK SC 16':'Noto Sans CJK SC 22',fontfile,rgba:true,width,height,align:compact?'left':'center',wrap:'char'}}).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+ const bits=Buffer.alloc(stride*height);
+ const left=compact?0:Math.floor((width-info.width)/2),top=Math.floor((height-info.height)/2);
+ for(let y=0;y<info.height;y++)for(let x=0;x<info.width;x++)if(data[(y*info.width+x)*4+3]>=96){const px=x+left,py=y+top;if(px>=0&&px<width&&py>=0&&py<height)bits[py*stride+(px>>3)]|=128>>(px&7);}
+ const result=bits.toString('hex');if(cache.size>=256)cache.delete(cache.keys().next().value);cache.set(key,result);return result;
 }
