@@ -3,7 +3,7 @@
 kunyuan.site {
     # Hardware downloads stay as uncompressed RGB565 bytes, including 206 responses.
     @website {
-        not path /api/device/*
+        not path /api/device/* /api/device-enrollment/* /local/*
     }
     encode @website zstd gzip
     reverse_proxy 127.0.0.1:3300
