@@ -1,12 +1,35 @@
 'use strict';
 // View preferences only; registrations and interests remain owned by the API.
-let discovery={query:'',category:'',scope:'all'},discoveryOwner=null;
+let discovery={query:'',category:'',scope:'all'},discoveryOwner=null,discoveryPastOpen=false;
 function filterDiscovery(events,filters=discovery,now=Date.now()/1000){
   const query=filters.query.trim().toLocaleLowerCase();
   return events.filter(e=>(!query||[e.title,e.location,e.host_nickname,e.category].some(value=>String(value||'').toLocaleLowerCase().includes(query)))
     &&(!filters.category||e.category===filters.category)
     &&(filters.scope==='all'||e.status==='published'&&e.ends_at>now&&(filters.scope==='upcoming'&&e.starts_at>now||filters.scope==='saved'&&e.my_interested||filters.scope==='joined'&&e.my_attending)))
-    .sort((a,b)=>a.starts_at-b.starts_at||a.id.localeCompare(b.id));
+    .sort((a,b)=>Number(a.starts_at)-Number(b.starts_at)||Number(a.ends_at)-Number(b.ends_at)||a.id.localeCompare(b.id));
+}
+function discoveryGroups(events,now=Date.now()/1000){
+  const groups={nearby:[],longterm:[],drafts:[],past:[]};
+  for(const event of events){
+    if(event.status==='cancelled')continue;
+    const group=event.status!=='published'?'drafts':event.ends_at<=now?'past':event.ends_at-event.starts_at>=3*86400?'longterm':'nearby';
+    groups[group].push(event);
+  }
+  const chronological=(a,b)=>a.starts_at-b.starts_at||a.ends_at-b.ends_at||a.id.localeCompare(b.id);
+  groups.nearby.sort(chronological);
+  groups.longterm.sort((a,b)=>Math.max(a.starts_at,now)-Math.max(b.starts_at,now)||a.ends_at-b.ends_at||chronological(a,b));
+  groups.drafts.sort(chronological);
+  groups.past.sort((a,b)=>b.ends_at-a.ends_at||chronological(a,b));
+  return groups;
+}
+function discoveryRows(events,now){
+  return `<ul class="discovery-event-list">${events.map(event=>`<li class="discovery-event-row" data-interest-surface="card:${esc(event.id)}"><a class="card-link discovery-event-link" href="#event/${esc(event.id)}"><span class="discovery-event-state">${event.status!=='published'?esc(statusText(event.status)):event.ends_at<=now?'已结束':event.starts_at<=now?'进行中':'即将开始'}</span><h4>${esc(event.title)}</h4><p class="discovery-event-dates">${esc(datetime(event.starts_at))} — ${esc(datetime(event.ends_at))}</p><p class="meta">${esc(event.category)} · ${esc(event.location)}</p></a><div class="discovery-row-actions">${interestButton(event,true)}${interestFeedbackSlot(event)}</div></li>`).join('')}</ul>`;
+}
+function discoveryGallery(events,total,now=Date.now()/1000){
+  const previous=document.querySelector('.discovery-past');
+  if(previous)discoveryPastOpen=previous.open;
+  const groups=discoveryGroups(events,now);
+  return `<section class="discovery-gallery" aria-labelledby="discovery-title"><div class="section-head"><div><span class="eyebrow">DISCOVER / TOGETHER</span><h2 id="discovery-title" tabindex="-1">在这里，让想法碰面。</h2><p>近期活动优先，长期活动慢慢探索。</p></div><span class="badge neutral">${events.length} 场活动</span></div>${!events.length?empty(total?'没有符合筛选条件的活动。':'活动正在筹备中。发布后会在这里出现。',total?'<button class="btn light" data-action="discovery-reset">查看全部活动</button>':'<button class="btn light" data-action="new-event">发起一个活动 ＋</button>'):`<section class="discovery-group" data-event-group="nearby" aria-labelledby="discovery-nearby-title"><div class="discovery-group-heading"><h3 id="discovery-nearby-title">近期活动 <span>${groups.nearby.length} 场</span></h3><p>正在进行与接下来的相遇 · 按开始时间排列</p></div>${groups.nearby.length?`<div class="grid">${groups.nearby.map(eventCard).join('')}</div>`:'<p class="discovery-group-empty">暂无近期活动，欢迎发起一次新的相遇。</p>'}</section>${groups.longterm.length?`<section class="discovery-group" data-event-group="longterm" aria-labelledby="discovery-longterm-title"><div class="discovery-group-heading"><h3 id="discovery-longterm-title">长期活动 <span>${groups.longterm.length} 场</span></h3><p>持续 3 天及以上 · 查看详情了解具体参与安排</p></div>${discoveryRows(groups.longterm,now)}</section>`:''}${groups.drafts.length?`<section class="discovery-group" data-event-group="drafts" aria-labelledby="discovery-drafts-title"><div class="discovery-group-heading"><h3 id="discovery-drafts-title">待发布活动 <span>${groups.drafts.length} 场</span></h3><p>审核与修改中的活动</p></div>${discoveryRows(groups.drafts,now)}</section>`:''}${groups.past.length?`<details class="discovery-group discovery-past" data-event-group="past" ${discoveryPastOpen?'open':''}><summary><h3>往期活动</h3><span>${groups.past.length} 场 · 查看往期</span></summary>${discoveryRows(groups.past,now)}</details>`:''}`}</section>`;
 }
 function dashboardPage(events){
   const owner=state.me?.id||null;
@@ -17,9 +40,9 @@ function dashboardPage(events){
   const metrics=[['upcoming','即将发生',upcoming.filter(e=>e.starts_at>Date.now()/1000).length,'看看接下来的相遇','yellow'],['saved','我的感兴趣',state.me?upcoming.filter(e=>e.my_interested).length:'—',state.me?'收藏想参加的活动':'登录后收藏你的安排','pink'],['joined','我的报名',state.me?upcoming.filter(e=>e.my_attending).length:'—',state.me?'为已经约好的相遇留出时间':'登录后查看报名活动','blue']];
   return `${hero()}<section class="dashboard-intro"><div><span class="eyebrow">HERSTORY / POP-UP CITY</span><h2>${state.me?`${esc(state.me.nickname)}，`:'一起'}安排下一场相遇。</h2><p>学习、链接、创造、玩。<span>2026.10.19 — 11.01 · 景德镇</span></p></div></section>
     <section class="dashboard-overview" aria-label="活动安排概览">${metrics.map(([scope,title,count,note,tone])=>`<button type="button" class="overview-card ${tone}" data-action="discovery-scope" data-scope="${scope}" aria-pressed="${discovery.scope===scope}"><span class="overview-label">${title}<span aria-hidden="true">↗</span></span><strong>${count}<small>${typeof count==='number'?' 场':''}</small></strong><span>${note}</span></button>`).join('')}</section>
-    <div class="city-section-links" role="group" aria-label="活动页内容导航"><button type="button" class="text-button" data-action="city-jump" data-target="calendar-title">▦ 活动日历总览 ↓</button><button type="button" class="text-button" data-action="city-jump" data-target="campus-map-title">⌖ Herstory 生活地图 ↓</button><button type="button" class="text-button" data-action="city-jump" data-target="discovery-title">全部活动 ↓</button></div><section class="discovery-controls" aria-label="筛选活动"><form id="discovery-form" role="search"><label class="discovery-search"><span aria-hidden="true">⌕</span><span class="sr-only">搜索活动</span><input id="discovery-query" name="query" type="search" maxlength="120" placeholder="搜索活动、地点或发起人" value="${esc(discovery.query)}"></label><button class="btn light" type="submit">搜索</button></form><label class="category-select">活动类型<select id="discovery-category"><option value="">全部类型</option>${categories.map(c=>`<option value="${esc(c)}" ${discovery.category===c?'selected':''}>${esc(c)}</option>`).join('')}</select></label><div class="discovery-scopes" role="group" aria-label="活动范围">${[['all','全部活动'],['upcoming','即将发生'],['saved','感兴趣'],['joined','已报名']].map(([scope,label])=>`<button type="button" class="filter ${discovery.scope===scope?'selected':''}" data-action="discovery-scope" data-scope="${scope}" aria-pressed="${discovery.scope===scope}">${label}</button>`).join('')}</div><p id="discovery-result" role="status">${discovery.query?`“${esc(discovery.query)}” · `:''}找到 ${filtered.length} 场活动${discovery.category?` · ${esc(discovery.category)}`:''}</p>${discovery.query||discovery.category||discovery.scope!=='all'?'<button type="button" class="text-button" data-action="discovery-reset">清除筛选</button>':''}</section>
+    <section class="discovery-controls" aria-label="筛选活动"><form id="discovery-form" role="search"><label class="discovery-search"><span aria-hidden="true">⌕</span><span class="sr-only">搜索活动</span><input id="discovery-query" name="query" type="search" maxlength="120" placeholder="搜索活动、地点或发起人" value="${esc(discovery.query)}"></label><button class="btn light" type="submit">搜索</button></form><label class="category-select">活动类型<select id="discovery-category"><option value="">全部类型</option>${categories.map(c=>`<option value="${esc(c)}" ${discovery.category===c?'selected':''}>${esc(c)}</option>`).join('')}</select></label><div class="discovery-scopes" role="group" aria-label="活动范围">${[['all','全部活动'],['upcoming','即将发生'],['saved','感兴趣'],['joined','已报名']].map(([scope,label])=>`<button type="button" class="filter ${discovery.scope===scope?'selected':''}" data-action="discovery-scope" data-scope="${scope}" aria-pressed="${discovery.scope===scope}">${label}</button>`).join('')}</div><p id="discovery-result" role="status">${discovery.query?`“${esc(discovery.query)}” · `:''}找到 ${filtered.length} 场活动${discovery.category?` · ${esc(discovery.category)}`:''}</p>${discovery.query||discovery.category||discovery.scope!=='all'?'<button type="button" class="text-button" data-action="discovery-reset">清除筛选</button>':''}</section>
 ${calendarSection(filtered)}<details class="dashboard-agenda" ${state.me&&(interestedToday(events).length||upcomingInterests(events).length)?'open':''}><summary><h2 class="agenda-title">我的感兴趣</h2> <span>查看今日与未来收藏</span></summary>${todaySchedule()}</details>
-    ${campusMapSection()}<section class="discovery-gallery" aria-labelledby="discovery-title"><div class="section-head"><div><span class="eyebrow">DISCOVER / TOGETHER</span><h2 id="discovery-title" tabindex="-1">在这里，让想法碰面。</h2><p>找一件想做的事，或者发起你自己的活动。</p></div><span class="badge neutral">${filtered.length} 场活动</span></div><div class="grid">${filtered.length?filtered.map(eventCard).join(''):empty(events.length?'没有符合筛选条件的活动。':'活动正在筹备中。发布后会在这里出现。',events.length?'<button class="btn light" data-action="discovery-reset">查看全部活动</button>':'<button class="btn light" data-action="new-event">发起一个活动 ＋</button>')}</div></section>`;
+    ${campusMapSection()}${discoveryGallery(filtered,events.length)}`;
 }
 function calendarHour(event,from){return event.starts_at<from?0:Number(eventClock(event.starts_at).slice(0,2));}
 function dashboardCalendar(events){
@@ -27,7 +50,7 @@ function dashboardCalendar(events){
   return dashboardTimeCalendar(events);
 }
 function dashboardTimeCalendar(events){
-  const start=dayStart(calendarDate),published=events.filter(e=>e.status==='published').sort((a,b)=>a.starts_at-b.starts_at||a.id.localeCompare(b.id));
+  const start=dayStart(calendarDate),published=events.filter(e=>e.status==='published').sort((a,b)=>Number(a.starts_at)-Number(b.starts_at)||Number(a.ends_at)-Number(b.ends_at)||a.id.localeCompare(b.id));
   const days=Array.from({length:calendarDays},(_,i)=>{const from=start+i*86400;return {from,day:eventDay(from),items:published.filter(e=>e.starts_at<from+86400&&e.ends_at>from)};});
   const occupied=days.flatMap(d=>d.items.map(e=>calendarHour(e,d.from)));
   const first=Math.min(9,...occupied),last=Math.max(18,...occupied),hours=Array.from({length:last-first+1},(_,i)=>first+i);
