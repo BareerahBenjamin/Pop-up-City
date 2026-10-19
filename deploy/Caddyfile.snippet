@@ -1,6 +1,8 @@
-# Add this site to the existing Caddy configuration; do not replace the whole file.
-# Keep PUBLIC_ORIGIN=https://kunyuan.site in sync with this hostname.
-kunyuan.site {
+# Standalone site template. Do not replace the whole Caddyfile.
+# If herstory.net.cn already exists, merge this proxy into its fallback route;
+# preserve TLS settings and /workshop/common-sense/* handlers. Do not duplicate the site.
+# Keep PUBLIC_ORIGIN=https://herstory.net.cn in sync with this hostname.
+herstory.net.cn {
     # Hardware downloads stay as uncompressed RGB565 bytes, including 206 responses.
     @website {
         not path /api/device/* /api/device-enrollment/* /local/*

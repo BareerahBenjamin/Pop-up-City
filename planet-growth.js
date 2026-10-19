@@ -67,7 +67,7 @@ export function settlePlanetGrowth(db,memberId){
 export function activatePlanetGrowth(db,admin){return growthTransaction(db,()=>{const old=releaseRow(db);assertRelease(old);const maps=db.raw.prepare('SELECT * FROM planet_activity_catalog_map').all();if(maps.some(m=>!planetRules.activities.some(a=>a.activity_id===m.catalog_activity_id))||new Set(maps.map(m=>m.activity_id)).size!==maps.length)fail(409,'现有目录映射含未知活动或同一活动重复绑定，请在启用前修正');if(!old)db.raw.prepare('INSERT INTO planet_growth_release VALUES(1,?,?,?,?,?,?)').run(release.rule_version,release.model_version,release.rule_sha256,release.manifest_sha256,admin.id,now());return {activated:true,...release}})}
 export function configurePlanetEvent(db,admin,data){return growthTransaction(db,()=>{
  if(!releaseRow(db))fail(409,'请先启用当前星球成长规则');
- const e=db.raw.prepare('SELECT * FROM events WHERE id=?').get(data.activity_id);if(!e)fail(404,'网站活动不存在');
+ const e=db.raw.prepare('SELECT * FROM events WHERE id=? AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=events.id)').get(data.activity_id);if(!e)fail(404,'网站活动不存在');
  const catalogId=data.catalog_activity_id||null,milestone=data.milestone||null;
  if(catalogId&&!planetRules.activities.some(a=>a.activity_id===catalogId))fail(400,'成长目录不存在');
  if(milestone&&!['opening','host'].includes(milestone))fail(400,'里程碑不合法');
@@ -87,7 +87,7 @@ export function reviewPlanetRole(db,admin,data){return growthTransaction(db,()=>
  if(!['volunteer','host'].includes(data.kind)||typeof data.evidence_note!=='string'||!data.evidence_note.trim()||data.evidence_note.length>1000)fail(400,'请填写身份类型和审核依据');
  if(data.member_id===admin.id)fail(403,'不能审核自己的奖励，请由另一位管理员确认');
  if(!db.raw.prepare("SELECT 1 FROM members WHERE id=? AND status!='disabled'").get(data.member_id))fail(404,'成员不存在');
- const e=data.kind==='host'?db.raw.prepare('SELECT * FROM events WHERE id=?').get(data.event_id):null;
+ const e=data.kind==='host'?db.raw.prepare('SELECT * FROM events WHERE id=? AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=events.id)').get(data.event_id):null;
  if(data.kind==='host'&&(!e||e.host_id!==data.member_id||e.status!=='published'||e.ends_at>now()))fail(409,'只有已结束且已发布的本人发起活动可以审核');
  if(e&&!db.raw.prepare('SELECT 1 FROM planet_growth_events WHERE event_id=? UNION ALL SELECT 1 FROM planet_activity_catalog_map WHERE activity_id=?').get(e.id,e.id))fail(409,'请先将该活动加入成长计划');
  const old=db.raw.prepare('SELECT * FROM planet_role_reviews WHERE member_id=? AND kind=? AND event_id IS ?').get(data.member_id,data.kind,e?.id||null);if(old)return {reviewId:old.id,duplicate:true};

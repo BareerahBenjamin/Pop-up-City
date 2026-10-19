@@ -182,6 +182,8 @@ async function route(request, env) {
   if (p.startsWith('/local/')) return cloudRoute(request, env, url, await deviceFromBearer(request, env), body);
   if (p.startsWith('/api/device/')) return deviceRoute(request, env, url);
   const user = await memberFromCookie(request, env);
+  const requestedEvent = /^\/api\/events\/([a-f0-9-]{36})(?:\/|$)/.exec(p);
+  if (requestedEvent && await first(env.DB, 'SELECT 1 FROM event_deletions WHERE event_id=?', requestedEvent[1])) fail(404, '活动已删除或不存在');
   const gameJam = await gameJamRoute(request,env,user,body);
   if (gameJam) return gameJam;
   if (method === 'GET' && p === '/planet') {
@@ -264,19 +266,19 @@ async function route(request, env) {
   if (method === 'GET' && memberMatch) {
     requireMember(user); const m = await first(env.DB, "SELECT * FROM members WHERE id=? AND status='active'", memberMatch[1]);
     if (!m) fail(404, '成员不存在');
-    const events = await all(env.DB, `SELECT id,title,starts_at FROM events WHERE host_id=? AND status='published' ORDER BY starts_at DESC`, m.id);
+    const events = await all(env.DB, `SELECT id,title,starts_at FROM events WHERE host_id=? AND status='published' AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=events.id) ORDER BY starts_at DESC`, m.id);
     const tasks = await all(env.DB, 'SELECT t.id,t.title,c.completed_at FROM task_claims c JOIN tasks t ON t.id=c.task_id WHERE c.member_id=? AND c.completed_at IS NOT NULL ORDER BY c.completed_at DESC', m.id);
     return json({ member: profile(m), events, completed_tasks: tasks });
   }
   if (method === 'GET' && p === '/api/events') {
-    const q = user?.role === 'admin' ? '' : user ? `WHERE e.status IN ('published','cancelled') OR e.host_id=?` : `WHERE e.status IN ('published','cancelled')`;
+    const q = user?.role === 'admin' ? '' : user ? `WHERE (e.status IN ('published','cancelled') OR e.host_id=?)` : `WHERE e.status IN ('published','cancelled')`;
     const items = await all(env.DB, `SELECT e.id,e.title,e.description,e.category,e.location,e.starts_at,e.ends_at,e.capacity,e.volunteer_capacity,e.host_id,e.official,e.status,e.reason,c.version cover_version,m.nickname host_nickname,
       (SELECT COUNT(*) FROM event_registrations r WHERE r.event_id=e.id AND r.kind='attendee') attendee_count,
       (SELECT COUNT(*) FROM event_registrations r WHERE r.event_id=e.id AND r.kind='volunteer') volunteer_count,
       EXISTS(SELECT 1 FROM event_registrations r WHERE r.event_id=e.id AND r.kind='attendee' AND r.member_id=?) my_attending,
       EXISTS(SELECT 1 FROM event_registrations r WHERE r.event_id=e.id AND r.kind='volunteer' AND r.member_id=?) my_volunteering,
       EXISTS(SELECT 1 FROM event_interests i WHERE i.event_id=e.id AND i.member_id=?) my_interested
-      FROM events e JOIN members m ON m.id=e.host_id LEFT JOIN event_covers c ON c.event_id=e.id ${q} ORDER BY e.starts_at,e.id`, user?.id || '', user?.id || '', user?.id || '', ...(q.includes('?') ? [user.id] : []));
+      FROM events e JOIN members m ON m.id=e.host_id LEFT JOIN event_covers c ON c.event_id=e.id ${q} ${q?'AND':'WHERE'} NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=e.id) ORDER BY e.starts_at,e.id`, user?.id || '', user?.id || '', user?.id || '', ...(q.includes('?') ? [user.id] : []));
     return json({ events: items.map(withCoverUrl) });
   }
   if (method === 'POST' && p === '/api/admin/events/import') {
@@ -309,7 +311,7 @@ async function route(request, env) {
     // No awaits inside this transaction: validation and all inserts share one write lock.
     const db = env.DB.raw; db.exec('BEGIN IMMEDIATE');
     try {
-      const duplicate = db.prepare("SELECT 1 FROM events WHERE title=? AND starts_at=? AND location=? AND status!='cancelled'");
+      const duplicate = db.prepare("SELECT 1 FROM events WHERE title=? AND starts_at=? AND location=? AND status!='cancelled' AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=events.id)");
       for (const row of rows) if (duplicate.get(row.title, row.starts, row.location)) errors.push(`第 ${row.row} 行：已有同名、同时间、同地点活动，请移除重复行`);
       if (errors.length) fail(409, errors.join('\n'));
       if (input.preview) { db.exec('ROLLBACK'); return json({ count: rows.length, events: rows }); }
@@ -345,8 +347,8 @@ async function route(request, env) {
       return json({ ok: true });
     }
     const result = await run(env.DB, `INSERT OR IGNORE INTO event_interests(event_id,member_id,created_at)
-      SELECT id,?,unixepoch() FROM events WHERE id=? AND status='published' AND starts_at>unixepoch()`, user.id, interest[1]);
-    if (!result.meta.changes && !await first(env.DB, `SELECT 1 FROM event_interests i JOIN events e ON e.id=i.event_id WHERE i.event_id=? AND i.member_id=? AND e.status='published' AND e.starts_at>unixepoch()`, interest[1], user.id)) fail(409, '活动已开始或未开放，不能再添加感兴趣');
+      SELECT id,?,unixepoch() FROM events WHERE id=? AND status='published' AND starts_at>unixepoch() AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=events.id)`, user.id, interest[1]);
+    if (!result.meta.changes && !await first(env.DB, `SELECT 1 FROM event_interests i JOIN events e ON e.id=i.event_id WHERE i.event_id=? AND i.member_id=? AND e.status='published' AND e.starts_at>unixepoch() AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=e.id)`, interest[1], user.id)) fail(409, '活动已开始或未开放，不能再添加感兴趣');
     return json({ ok: true });
   }
   const qr = /^\/api\/events\/([a-f0-9-]{36})\/qr$/.exec(p);
@@ -396,7 +398,7 @@ async function route(request, env) {
     const limit = kind === 'attendee' ? e.capacity : e.volunteer_capacity;
     if (!limit) fail(409, '未开放志愿者招募');
     const result = await run(env.DB, `INSERT OR IGNORE INTO event_registrations(event_id,member_id,kind,created_at)
-      SELECT ?,?,?,? WHERE (SELECT COUNT(*) FROM event_registrations WHERE event_id=? AND kind=?) < ? AND EXISTS(SELECT 1 FROM events WHERE id=? AND status='published' AND starts_at>unixepoch())`, e.id, user.id, kind, now(), e.id, kind, limit, e.id);
+      SELECT ?,?,?,? WHERE (SELECT COUNT(*) FROM event_registrations WHERE event_id=? AND kind=?) < ? AND EXISTS(SELECT 1 FROM events WHERE id=? AND status='published' AND starts_at>unixepoch() AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=events.id))`, e.id, user.id, kind, now(), e.id, kind, limit, e.id);
     if (!result.meta.changes) {
       const existing = await first(env.DB, 'SELECT 1 FROM event_registrations WHERE event_id=? AND member_id=? AND kind=?', e.id, user.id, kind);
       if (!existing) fail(409, '活动已开始、未开放或名额已满');
@@ -434,6 +436,8 @@ async function route(request, env) {
 }
 async function adminRoute(request, env, url, user) {
   const p = url.pathname, method = request.method;
+  const requestedEvent = /^\/api\/admin\/events\/([a-f0-9-]{36})(?:\/(.*))?$/.exec(p);
+  if (requestedEvent && !(method === 'DELETE' && !requestedEvent[2]) && requestedEvent[2] !== 'audit' && await first(env.DB, 'SELECT 1 FROM event_deletions WHERE event_id=?', requestedEvent[1])) fail(404, '活动已删除或不存在');
   if (p === '/api/admin/planet/growth' && method === 'GET') return json(planetGrowthAdmin(env.DB));
   if (p.startsWith('/api/admin/planet/growth/') && ['POST','PUT'].includes(method)) {
     const data = await body(request);
@@ -489,6 +493,18 @@ async function adminRoute(request, env, url, user) {
     return json({ ok: true });
   }
   const event = /^\/api\/admin\/events\/([a-f0-9-]{36})$/.exec(p);
+  if (method === 'DELETE' && event) {
+    const data = await body(request), old = await first(env.DB, 'SELECT id,title FROM events WHERE id=?', event[1]);
+    if (!old) fail(404, '活动不存在');
+    if (data.confirm_title !== old.title) fail(409, '活动名称已变化，请刷新后重新确认删除');
+    const stamp = now();
+    await env.DB.batch([
+      sql(env.DB, `INSERT INTO event_audit SELECT ?,?,?,?,'管理员确认删除；保留报名、签到及成长记录',?
+        WHERE NOT EXISTS (SELECT 1 FROM event_deletions WHERE event_id=?)`, uid(), old.id, user.id, 'delete', stamp, old.id),
+      sql(env.DB, 'INSERT OR IGNORE INTO event_deletions(event_id,deleted_by,deleted_at) VALUES(?,?,?)', old.id, user.id, stamp),
+    ]);
+    return json({ ok: true });
+  }
   if (method === 'PATCH' && event) {
     const data = await body(request), old = await first(env.DB, 'SELECT * FROM events WHERE id=?', event[1]); if (!old) fail(404, '活动不存在');
     const status = data.status ?? old.status, official = data.official ?? Boolean(old.official), reason = str(data.reason ?? '', 500, '原因', false);
@@ -522,17 +538,17 @@ async function deviceRoute(request, env, url) {
   const hardware = await hardwareRoute(request, env, url, d, body);
   if (hardware) return hardware;
   if (method === 'GET' && p === '/api/device/me') return json({ member_id: d.member_id, nickname: d.nickname, bio: d.card_public ? d.bio : '', avatar: JSON.parse(d.avatar_json || '{}') });
-  if (method === 'GET' && p === '/api/device/events') return json({ events: await all(env.DB, `SELECT e.id,e.title,e.starts_at,e.ends_at,e.location FROM events e JOIN event_registrations r ON r.event_id=e.id WHERE r.member_id=? AND r.kind='attendee' AND e.status='published' ORDER BY e.starts_at`, d.member_id) });
+  if (method === 'GET' && p === '/api/device/events') return json({ events: await all(env.DB, `SELECT e.id,e.title,e.starts_at,e.ends_at,e.location FROM events e JOIN event_registrations r ON r.event_id=e.id WHERE r.member_id=? AND r.kind='attendee' AND e.status='published' AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=e.id) ORDER BY e.starts_at`, d.member_id) });
   if (method === 'GET' && p === '/api/device/records') return json({ checkins: await all(env.DB, 'SELECT event_id,checked_at FROM checkins WHERE member_id=? ORDER BY checked_at DESC', d.member_id), connections: await connectionsFor(env.DB, d.member_id) });
   if (method === 'POST' && p === '/api/device/checkins') {
     const data = await body(request), eventId = str(data.event_id, 36, '活动 ID'), pin = str(data.pin, 6, '签到口令'), requestId = str(data.request_id, 80, '请求 ID');
-    const e = await first(env.DB, 'SELECT * FROM events WHERE id=?', eventId), stamp = now();
+    const e = await first(env.DB, 'SELECT * FROM events WHERE id=? AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=events.id)', eventId), stamp = now();
     if (!e || e.status !== 'published' || !e.venue_pin_hash || stamp < e.starts_at - 3600 || stamp >= e.starts_at) fail(409, '活动当前不可签到');
     if (!await first(env.DB, "SELECT 1 FROM event_registrations WHERE event_id=? AND member_id=? AND kind='attendee'", eventId, d.member_id)) fail(403, '尚未报名此活动');
     const failures = await first(env.DB, 'SELECT COUNT(*) n FROM device_failed_codes WHERE device_id=? AND attempted_at>?', d.id, stamp - 600);
     if (failures.n >= 10) fail(429, '尝试次数过多，请稍后再试');
     if (await mac(env.AUTH_PEPPER, `venue:${eventId}:${pin}`) !== e.venue_pin_hash) { await run(env.DB, 'INSERT INTO device_failed_codes VALUES(?,?)', d.id, stamp); fail(403, '签到口令不正确'); }
-    const snapshot=growthTransaction(env.DB,()=>{env.DB.raw.prepare('INSERT OR IGNORE INTO checkins VALUES(?,?,?,?,?)').run(eventId,d.member_id,d.id,stamp,requestId);return planetSnapshotInTransaction(env.DB,d.member_id);});
+    const snapshot=growthTransaction(env.DB,()=>{if(env.DB.raw.prepare('SELECT 1 FROM event_deletions WHERE event_id=?').get(eventId))fail(409,'活动已删除，不可签到');env.DB.raw.prepare('INSERT OR IGNORE INTO checkins VALUES(?,?,?,?,?)').run(eventId,d.member_id,d.id,stamp,requestId);return planetSnapshotInTransaction(env.DB,d.member_id);});
     return json({ status: 'checked_in', event_id: eventId, planet_revision:snapshot.revision,growth_status:snapshot.integration.growthStatus });
   }
   if (method === 'POST' && p === '/api/device/social-code') {

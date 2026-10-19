@@ -2,10 +2,12 @@
 
 - **版本：** v1.0
 - **负责人：** 技术实施
-- **状态：** kunyuan.site公网HTTPS及独立服务已验收；SMTP认证通过，真实投递与硬件待验收
-- **最后更新：** 2026-10-06
+- **状态：** herstory.net.cn 已接入现有服务并通过公网验证；真实邮件投递与硬件待验收
+- **最后更新：** 2026-10-12
 
 完整可执行步骤、发布自检和首次／升级分支见 [云服务器部署流程](cloud_deployment_v1.0.md)，硬件画面格式见 [RGB565存储契约](rgb565_storage_v1.0.md)。
+
+2026-10-12 用户指定正式域名改为 `herstory.net.cn`。其现有 Caddy 站点已将主路由接入 3300，保留原 TLS、Workshop 子路径与其他站点。不得重复添加同名站点；旧域名的历史部署说明以 [域名迁移记录](domain_migration_v1.0.md) 为准。
 
 ## 目标
 
@@ -21,7 +23,7 @@
 | 配置文件 | `/etc/herstory-popup-city/server.env` |
 | systemd 服务 | `herstory-popup-city.service` |
 | HTTP | `127.0.0.1:3300`，不在云防火墙开放此端口 |
-| 域名 | `https://kunyuan.site`，使用根域名；保留现有其他站点及解析 |
+| 域名 | `https://herstory.net.cn`，www 跳转至根域名；保留 Workshop 子路径及其他站点 |
 
 资源限制初值：MemoryHigh 384M、MemoryMax 512M、禁用本服务 Swap、CPUQuota 50%（半个 CPU 核的执行时间上限，并非整台 4 核机器的一半）、低 CPU/IO 调度权重。这些是起始预算，不是容量承诺；应在模拟实际人数的负载验证后调整。★★★☆☆（资源有余量，但尚无新应用生产负载数据。）
 
@@ -86,9 +88,9 @@ ssh -i ~/.ssh/YOUR_SERVER_KEY -o IdentitiesOnly=yes \
   -L 13300:127.0.0.1:3300 ubuntu@YOUR_SERVER_IP
 ```
 
-打开 `http://127.0.0.1:13300` 仅验证公开页。生产配置要求 HTTPS 且 Origin 与 `https://kunyuan.site` 一致，不能为了隧道下登录而关闭生产来源检查或 Secure Cookie。完整登录在正式 HTTPS 入口验收。
+打开 `http://127.0.0.1:13300` 仅验证公开页。生产配置要求 HTTPS 且 Origin 与 `https://herstory.net.cn` 一致，不能为了隧道下登录而关闭生产来源检查或 Secure Cookie。完整登录在正式 HTTPS 入口验收。
 
-域名就绪后，先核对 `kunyuan.site` 的现有 A、AAAA、CNAME 与业务用途；如果根域名已有网站，先确认切换安排，不能直接覆盖。无冲突后将根域名（DNS 主机记录通常为 `@`）的 A 记录配置为 目标服务器公网 IP。如存在指向其他服务器的 AAAA，也需明确处理方案，避免 IPv6 访问落到错误站点。保留现有其他网站和邮件记录，本次不配置 `www`。读取现有 Caddy 的实际启动配置、import 结构和证书方式，只增加 `deploy/Caddyfile.snippet` 对应的新站点。**不能用片段覆盖整份 Caddyfile。**
+当前 `herstory.net.cn` 和 `www` 已解析到服务器，DNS 无需重复修改；www 已跳转根域名。未来更换服务器时核对 A、AAAA、CNAME 及邮件记录。读取现有 Caddy 的启动配置、import 和证书方式，将 `deploy/Caddyfile.snippet` 的反向代理合并到现有主站兜底路由，保留 `/workshop/common-sense/*` 处理器及 TLS 设置。**不能重复声明同名站点，也不能用片段覆盖整份 Caddyfile。**
 
 验证合并后的完整配置，使用现有服务支持的 reload 方式平滑加载。若验证失败，不 reload。Caddy 配置校验与 reload 的命令参数以其实际配置路径和适配器为准。[Caddy 官方命令说明](https://caddyserver.com/docs/command-line)
 
@@ -103,12 +105,12 @@ ssh -i ~/.ssh/YOUR_SERVER_KEY -o IdentitiesOnly=yes \
 - 回退代码仅切换本服务 `current` 并重启本服务。若新版本有数据库迁移，先验证旧代码兼容性，不盲目降级数据库、不覆盖旧站数据。
 - 不新增或删除主机快照，不自动删除历史 Cloudflare Worker/D1。备份与个人数据保留规则须另行确定；本手册没有授权更改这些设置。
 
-## 当前尚缺
+## 当前验收边界
 
-1. `kunyuan.site` 的 DNS 管理权限及现有解析用途核对。
-2. SMTP 服务商、发信邮箱、授权信息（只填受保护配置文件），以及实际发信测试。
-3. 是否需要迁移历史 Cloudflare 数据；目前默认新建独立空数据库。
-4. 实际服务器运行时、systemd 沙箱与旧站回归验证。
+1. herstory.net.cn 的 DNS、HTTPS、公开页面与 API 已通过本次公网检查。
+2. SMTP 配置保留且健康检查为已配置；真实登录邮件投递仍需用户验收。
+3. 继续使用现有生产 SQLite 数据库，不新建空库或导入历史 Cloudflare 数据。
+4. Workshop 与其他服务保留；Safari 真机和硬件端到端链路仍需验收。
 
 ## 星球、头像锁定与硬件接口升级
 
