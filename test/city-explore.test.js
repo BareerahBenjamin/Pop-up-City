@@ -49,3 +49,16 @@ test('map resolves only known venue aliases and gives specific floor names prior
   assert.equal(find('迎新点'),'welcome');
   assert.equal(find('共创空间'),null);assert.equal(find('陶邑潮生酒店'),null);assert.equal(find(''),null);
 });
+
+test('calendar prioritizes events starting on the selected day and lists long events once outside daily slots',()=>{
+  const {context,eventsOnDay,monthCalendar,dayStart}=helpers(),start=dayStart('2026-10-20');
+  vm.runInContext("calendarDate='2026-10-20'",context);
+  const make=(id,from,to)=>({id,title:id,category:'学习',location:'E栋',status:'published',starts_at:start+from,ends_at:start+to});
+  const events=[make('long',-7*86400,7*86400),make('overnight',-3600,7200),make('today',10*3600,11*3600)];
+  assert.deepEqual(Array.from(eventsOnDay(events,'2026-10-20'),e=>e.id),['today','overnight']);
+  const html=monthCalendar(events);
+  assert.equal((html.match(/href="#event\/long"/g)||[]).length,1);
+  assert.ok(html.indexOf('class="month-day-agenda"')<html.indexOf('class="month-scroll"'));
+  assert.match(html,/<details class="calendar-longterm" >/);
+  assert.equal(events.length,3);
+});
