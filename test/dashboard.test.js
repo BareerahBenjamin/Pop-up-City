@@ -32,3 +32,12 @@ test('calendar shows cross-midnight events on each occupied venue day and exclud
   assert.match(html,/10月20日周二 00:00/);
   assert.match(html,/跨日 · 23:00/);
 });
+
+test('activity discovery orders mixed dates by start time and same-start events by end time without changing input',()=>{
+  const {filterDiscovery}=helpers();
+  const make=(id,time,end)=>({id,title:'相遇',category:'学习',location:'教室',host_nickname:'邻居',status:'published',starts_at:Date.parse(time)/1000,ends_at:Date.parse(end)/1000});
+  const events=[make('november','2026-11-01T09:00:00+08:00','2026-11-01T10:00:00+08:00'),make('late','2026-10-28T17:00:00+08:00','2026-10-28T18:00:00+08:00'),make('long','2026-10-28T13:00:00+08:00','2026-10-28T16:00:00+08:00'),make('early','2026-10-20T09:00:00+08:00','2026-10-20T10:00:00+08:00'),make('short','2026-10-28T13:00:00+08:00','2026-10-28T14:00:00+08:00')];
+  const original=events.map(e=>e.id);
+  assert.deepEqual(Array.from(filterDiscovery(events,{query:'',category:'',scope:'all'}),e=>e.id),['early','short','long','late','november']);
+  assert.deepEqual(events.map(e=>e.id),original);
+});

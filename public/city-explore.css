@@ -1,6 +1,4 @@
 /* Herstory activity calendar and static campus map. */
-.city-section-links { display:flex; flex-wrap:wrap; gap:12px 24px; margin:28px 0 8px; }
-.city-section-links button { min-height:44px; font-size:1rem; }
 .campus-map-section { margin:48px 0; padding-top:28px; border-top:1px solid var(--line); }
 #calendar-title,#campus-map-title,#discovery-title { scroll-margin-top:calc(var(--site-header-height,0px) + 24px); }
 .month-calendar { --month-pink:#a50d68; --month-blue:#2f5f92; --month-yellow:#855b0c; --month-neutral:#5b566e; }
@@ -136,3 +134,10 @@
 .site-layout .event-delete-button { color:#a02341; }
 .site-layout .event-delete-confirm { background:#a02341; border-color:#a02341; color:white; }
 .site-layout .event-delete-confirm:disabled { opacity:.6; cursor:wait; }
+
+.event-origin-options { border:0; padding:0; margin:20px 0; min-width:0; }
+.event-origin-options legend { font-size:var(--text-control); font-weight:500; margin-bottom:12px; }
+.event-origin-choices { display:flex; flex-wrap:wrap; gap:12px; }
+.event-origin-choices .check { flex:1 1 190px; min-height:48px; margin:0; padding:12px; border:1px solid var(--line); border-radius:12px; background:var(--color-surface); cursor:pointer; }
+.event-origin-choices input { accent-color:var(--pink); }
+.event-origin-choices label:has(input:checked) { border-color:var(--pink); }

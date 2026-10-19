@@ -32,7 +32,9 @@ try{
   await page.goto(origin+'/#events');await page.locator('.month-grid').waitFor();
   assert.equal(await page.locator('nav a[href="#calendar"],nav a[href="#map"]').count(),0);
   assert.equal(await page.locator('#campus-map').count(),1);
-  await page.locator('[data-action="city-jump"][data-target="campus-map-title"]').first().click();assert.equal(new URL(page.url()).hash,'#events');
+  assert.equal(await page.locator('.city-section-links').count(),0);
+  const ordered=db.raw.prepare("SELECT id FROM events WHERE status!='cancelled' AND (status='published' OR host_id=?) ORDER BY starts_at,ends_at,id").all(member).map(e=>e.id);
+  assert.deepEqual(await page.locator('.discovery-gallery .card-link').evaluateAll(links=>links.map(a=>a.hash.split('/')[1])),ordered);
   await page.locator('#campus-detail [data-target="calendar-title"]').click();assert.equal(new URL(page.url()).hash,'#events');
   await page.locator('#calendar-month').fill('2026-10');
   await page.locator('.month-date[data-date="2026-10-20"]').click();
@@ -85,6 +87,24 @@ try{
   }
   const guest=await browser.newContext({viewport:{width:375,height:850}}),guestPage=await guest.newPage();
   await guestPage.goto(origin+'/#events');await guestPage.locator('#calendar-month').fill('2026-10');await guestPage.locator('.month-date[data-date="2026-10-20"]').click();await guestPage.locator(`.month-day-list .interest-button[data-id="${first}"]`).click();await guestPage.locator('#login-request-form').waitFor();
+  // Verify the mutually exclusive event-origin choices through actual edits and reloads.
+  db.raw.prepare("UPDATE members SET role='admin' WHERE id=?").run(member);
+  await page.setViewportSize({width:375,height:850});await page.reload();await page.goto(`${origin}/#event/${first}`);
+  await page.locator('[data-action="edit-event"]').click();
+  assert.equal(await page.locator('#event-form input[name="official"][type="radio"]').count(),2);
+  assert.equal(await page.getByRole('radio',{name:'居民发起活动',exact:true}).isChecked(),true);
+  await page.getByRole('radio',{name:'社区官方活动',exact:true}).check();
+  assert.equal(await page.getByRole('radio',{name:'居民发起活动',exact:true}).isChecked(),false);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  await page.locator('#event-form').screenshot({path:`${out}/event-origin-mobile.png`,style:'.site-chrome,#toast,.skip{visibility:hidden!important}'});
+  await page.locator('#event-form button.btn.wide').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);
+  assert.equal(db.raw.prepare('SELECT official FROM events WHERE id=?').get(first).official,1);
+  await page.reload();await page.locator('[data-action="edit-event"]').click();
+  assert.equal(await page.getByRole('radio',{name:'社区官方活动',exact:true}).isChecked(),true);
+  await page.getByRole('radio',{name:'居民发起活动',exact:true}).check();
+  await page.locator('#event-form button.btn.wide').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);
+  assert.equal(db.raw.prepare('SELECT official FROM events WHERE id=?').get(first).official,0);
+  console.log('PASSED: removed activity jump bar; chronological activity cards; official/resident radio selection and persisted edits.');
   // The same isolated member now reviews the real administrator deletion flow.
   db.raw.prepare("UPDATE members SET role='admin' WHERE id=?").run(member);
   await page.setViewportSize({width:1280,height:900});await page.reload();await page.goto(origin+'/#admin');
