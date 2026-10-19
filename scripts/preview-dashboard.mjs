@@ -22,6 +22,10 @@ for(const [index,[title,category,location,offset,hour]] of samples.entries()){
   if([0,2,6].includes(index))db.raw.prepare('INSERT INTO event_interests VALUES(?,?,?)').run(id,member,now);
   if(index===2)db.raw.prepare("INSERT INTO event_registrations VALUES(?,?,'attendee',?)").run(id,member,now);
 }
+// Include ongoing, future and ended long activities for reviewing discovery grouping.
+for(const [title,start,end] of [['城市共创驻留计划',now-7*86400,now+10*86400],['邻里开放工作坊',now+5*86400,now+12*86400],['上周的开放分享',now-8*86400,now-8*86400+5400]]){
+  db.raw.prepare("INSERT INTO events(id,title,description,category,location,starts_at,ends_at,capacity,host_id,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,30,?,'published',?,?)").run(randomUUID(),title,'本地分组展示示例，具体参与安排请查看活动详情。','共创','共同客厅',start,end,member,now,now);
+}
 const server=createApplication(config,{db,mailer:null});
 const [application]=server.listeners('request');server.removeAllListeners('request');
 const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8').replace('<body class="site-layout">','<body class="site-layout"><p class="preview-notice" role="status">本地交互预览 · 全部为示例数据 · 重启即清空 · 不发送邮件</p>');
