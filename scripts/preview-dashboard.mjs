@@ -13,6 +13,8 @@ db.raw.prepare('INSERT INTO sessions VALUES(?,?,?,?)').run(createHash('sha256').
 const admin=randomUUID(),adminToken=randomBytes(32).toString('hex');
 db.raw.prepare("INSERT INTO members(id,email,nickname,role,status,created_at,updated_at) VALUES(?,?,?,'admin','active',?,?)").run(admin,'preview-admin@example.test','预览管理员',now,now);
 db.raw.prepare('INSERT INTO sessions VALUES(?,?,?,?)').run(createHash('sha256').update(adminToken).digest('hex'),admin,now+86400,now);
+// Fake bindings belong only to this disposable in-memory preview; allow registration testing.
+for(const id of [member,admin])db.raw.prepare('INSERT INTO devices VALUES(?,?,?,NULL,?)').run(randomUUID(),id,createHash('sha256').update(randomBytes(32)).digest('hex'),now);
 
 const day=new Date((now+8*3600)*1000).toISOString().slice(0,10),midnight=Date.parse(`${day}T00:00:00+08:00`)/1000;
 const samples=[['把灵感捏进一只杯子','共创','C栋2层 · 公共活动区',1,10],['一起写下城市的新故事','学习','E栋2层 · 课程教室',1,10],['带着电脑，一起做点有趣的事','科技','C栋2层 · 公共活动区',1,14],['在晚餐前，散步认识新邻居','连接','迎新点',1,17],['从一杯咖啡开始聊聊','连接','街角咖啡',2,9],['让你的第一个小游戏诞生','科技','C栋2层 · 公共活动区',2,11],['用一顿饭交换家乡的味道','生活','公共厨房',2,18],['把一天的好奇心画下来','共创','共同客厅',0,15],['一次开放的创作分享','学习','E栋2层 · 课程教室',0,19],['一起为市集做准备','共创','陶溪川广场',3,14]];
