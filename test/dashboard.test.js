@@ -5,7 +5,7 @@ import vm from 'node:vm';
 const source=readFileSync(new URL('../public/dashboard.js',import.meta.url),'utf8');
 function helpers(){
   const context=vm.createContext({document:{addEventListener(){}},setInterval(){},Intl,Date});
-  vm.runInContext(readFileSync(new URL('../public/event-tools.js',import.meta.url),'utf8')+'\n'+source+'\n'+readFileSync(new URL('../public/month-calendar.js',import.meta.url),'utf8')+'\nthis.helpers={filterDiscovery,calendarHour,dayStart,dashboardCalendar};',context);
+  vm.runInContext(readFileSync(new URL('../public/event-tools.js',import.meta.url),'utf8')+'\n'+source+'\n'+readFileSync(new URL('../public/month-calendar.js',import.meta.url),'utf8')+'\nthis.helpers={filterDiscovery,discoveryGroups,calendarHour,dayStart,dashboardCalendar};',context);
   return {context,...context.helpers};
 }
 test('discovery combines search and category; personal filters exclude cancelled and ended activities without mutating source',()=>{
@@ -40,4 +40,20 @@ test('activity discovery orders mixed dates by start time and same-start events 
   const original=events.map(e=>e.id);
   assert.deepEqual(Array.from(filterDiscovery(events,{query:'',category:'',scope:'all'}),e=>e.id),['early','short','long','late','november']);
   assert.deepEqual(events.map(e=>e.id),original);
+});
+
+
+test('discovery separates long activities and drafts from near-term events, archives ended events and preserves source',()=>{
+  const {discoveryGroups}=helpers(),day=86400,now=10*day;
+  const make=(id,start,end,status='published')=>({id,starts_at:start,ends_at:end,status});
+  const events=[make('long-running',day,now+5*day),make('tomorrow',now+day,now+day+3600),make('past-long',day,now),make('active',now-100,now+100),make('old',day,2*day),make('boundary',now+2*day,now+5*day),make('short',now+day,now+day+200),make('draft',day,now+day,'pending'),make('cancelled',day,now+5*day,'cancelled')];
+  const original=events.map(e=>({...e})),groups=discoveryGroups(events,now),ids=key=>Array.from(groups[key],e=>e.id);
+  assert.deepEqual(ids('nearby'),['active','short','tomorrow']);
+  assert.deepEqual(ids('longterm'),['long-running','boundary']);
+  assert.deepEqual(ids('past'),['past-long','old']);
+  assert.deepEqual(ids('drafts'),['draft']);
+  assert.deepEqual(events,original);
+  assert.equal(new Set(Object.values(groups).flat().map(e=>e.id)).size,events.length-1);
+  const below=make('below',now,now+3*day-1);
+  assert.equal(discoveryGroups([below],now).nearby[0].id,'below');
 });

@@ -106,7 +106,30 @@
 .site-layout .footer-copy, .site-layout .footer-date { font-size: var(--text-xs); }
 .discovery-gallery .section-head { flex-direction: row; align-items: center; }
 .discovery-gallery .section-head p { font-size: 1.0625rem; }
+.discovery-gallery > .section-head > .badge { flex-shrink: 0; white-space: nowrap; }
 .discovery-gallery .event-card { border-radius: 16px; }
+.discovery-group { margin-top: 32px; }
+.discovery-group-heading { margin-bottom: 16px; }
+.discovery-group-heading h3,.discovery-past h3 { margin: 0; font-size: 1.375rem; line-height: 1.5; font-weight: 600; text-wrap: balance; }
+.discovery-group-heading h3 span { margin-left: 12px; color: var(--muted); font-size: 1rem; font-weight: 400; font-variant-numeric: tabular-nums; }
+.discovery-group-heading p,.discovery-group-empty { color: var(--muted); font-size: 1rem; line-height: 1.7; text-wrap: pretty; }
+.discovery-group-heading p { margin: 6px 0 0; }
+.discovery-group-empty { padding: 20px; border: 1px solid var(--line); border-radius: 12px; }
+.discovery-event-list { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--line); }
+.discovery-event-row { display: flex; align-items: flex-start; gap: 16px; border-bottom: 1px solid var(--line); padding: 20px 0; }
+.discovery-event-link { min-width: 0; flex: 1; text-decoration: none; border-radius: 4px; overflow-wrap: anywhere; }
+.discovery-event-link:hover h4 { text-decoration: underline; text-underline-offset: 4px; }
+.discovery-event-state { color: var(--color-accent); font-size: .875rem; }
+.discovery-event-link h4 { font-size: 1.25rem; line-height: 1.5; margin: 6px 0 8px; text-wrap: balance; }
+.discovery-event-dates { font-size: 1rem; line-height: 1.7; font-variant-numeric: tabular-nums; }
+.discovery-event-link .meta { font-size: 1rem; line-height: 1.7; margin: 4px 0 0; }
+.discovery-row-actions { max-width: 220px; text-align: right; }
+.discovery-row-actions .interest-feedback:empty { display: none; }
+.discovery-past { border-top: 1px solid var(--line); }
+.discovery-past summary { cursor: pointer; padding: 20px 0; min-height: 48px; }
+.discovery-past summary h3 { display: inline; margin-right: 12px; }
+.discovery-past summary > span { color: var(--muted); font-size: 1rem; font-variant-numeric: tabular-nums; }
+.discovery-past .discovery-event-state { color: var(--muted); }
 @media (min-width: 1050px) {
   .site-layout { padding-top: 0; padding-left: 236px; }
   .site-chrome { inset: 16px auto 16px 16px; width: 204px; border: 0; border-radius: 20px; background: #191a18; color: #f5f1e6; padding: 24px 16px; display: flex; flex-direction: column; overflow-y: auto; }
@@ -167,6 +190,10 @@
   .dashboard-agenda { padding: 16px; }
   .dashboard-agenda summary span { display: block; margin: 6px 0 0; }
   .discovery-gallery .section-head { align-items: flex-start; }
+  .discovery-event-row { flex-wrap: wrap; gap: 8px; }
+  .discovery-event-link { flex-basis: calc(100% - 72px); }
+  .discovery-row-actions { max-width: 100%; }
+  .discovery-row-actions:has(.interest-feedback:not(:empty)) { flex-basis: 100%; text-align: left; }
   .site-layout .festival-footer { padding: 16px; grid-template-columns: 1fr; }
   .site-layout .festival-footer .footer-date { text-align: left; }
 }
