@@ -5,11 +5,13 @@
   const footer = document.querySelector('.festival-footer');
   if (!header || !footer) return;
   const measure = () => {
-    root.style.setProperty('--site-header-height', `${Math.ceil(header.getBoundingClientRect().height)}px`);
-    root.style.setProperty('--site-footer-height', `${Math.ceil(footer.getBoundingClientRect().height)}px`);
+    const sidebar = matchMedia('(min-width: 1050px)').matches;
+    root.style.setProperty('--site-header-height', `${sidebar ? 0 : Math.ceil(header.getBoundingClientRect().height)}px`);
+    root.style.setProperty('--site-footer-height', '0px');
   };
   measure();
   const observer = new ResizeObserver(measure);
   observer.observe(header);
   observer.observe(footer);
+  window.addEventListener('resize', measure);
 })();

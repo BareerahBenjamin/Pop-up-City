@@ -176,3 +176,18 @@ test('host names require registration and batch checks only authenticated nearby
  assert.equal(unwrap(await f.call('/local/host/batch',host,batch),host).results[0].status,'checked_in');
  const fresh=submission(f.ba);assert.equal(unwrap(await f.call('/local/host/batch',host,{activity_id:activity,participants:[fresh]}),host).results[0].code,'HOST_NOT_AUTHORIZED');
 });
+
+test('local event deletion remains effective across remote cloud station and host routes',async t=>{
+ const f=fixture(t),activity=f.event();await grant(f,activity);
+ const waiting=unwrap(await f.call('/local/checkin/request',f.ba,{station_device_id:f.station.id}),f.ba);assert.equal(waiting.activity_id,activity);
+ assert.equal((await f.call(`/api/admin/events/${activity}`,f.admin,{confirm_title:'测试活动'},'DELETE')).status,200);
+ assert.equal(unwrap(await f.call('/local/checkin/activities',f.station),f.station).activities.length,0);
+ assert.equal(unwrap(await f.call('/local/checkin/session',f.station),f.station).state,'idle');
+ assert.equal((await f.call('/local/checkin/request',f.ba,{station_device_id:f.station.id})).status,409);
+ assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM checkins').get().n,0);
+ const hosted=f.event();f.db.raw.prepare('UPDATE events SET host_id=?,starts_at=? WHERE id=?').run(f.c.id,f.stamp-1,hosted);
+ assert.equal(unwrap(await f.call('/local/host/state',f.bc),f.bc).activities.length,1);
+ await f.call(`/api/admin/events/${hosted}`,f.admin,{confirm_title:'测试活动'},'DELETE');
+ assert.equal(unwrap(await f.call('/local/host/state',f.bc),f.bc).activities.length,0);
+ assert.equal((await f.call('/api/admin/hardware/configure',f.admin,{device_id:f.bc.id,host_activity_id:hosted,enabled:true},'PUT')).status,403);
+});

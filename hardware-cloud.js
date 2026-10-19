@@ -24,7 +24,7 @@ function save(db,id,state) {
  db.raw.prepare('INSERT INTO hardware_cloud_sessions VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET state_json=excluded.state_json,updated_at=excluded.updated_at').run(id,JSON.stringify(state),now());
 }
 function activities(db,station) {
- return db.raw.prepare(`SELECT e.id,e.title label,e.starts_at,e.ends_at FROM events e JOIN checkin_station_activities a ON a.activity_id=e.id WHERE a.station_device_id=? AND a.revoked_at IS NULL AND a.opens_at<=? AND a.closes_at>? AND e.status='published' AND e.starts_at>? AND e.starts_at<=? ORDER BY e.starts_at,e.id`).all(station,now(),now(),now(),now()+3600).map(e=>({...e,label:/^[\x20-\x7e]{1,48}$/.test(e.label)?e.label:'ACTIVITY '+e.id.slice(0,8)}));
+ return db.raw.prepare(`SELECT e.id,e.title label,e.starts_at,e.ends_at FROM events e JOIN checkin_station_activities a ON a.activity_id=e.id WHERE a.station_device_id=? AND a.revoked_at IS NULL AND a.opens_at<=? AND a.closes_at>? AND e.status='published' AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=e.id) AND e.starts_at>? AND e.starts_at<=? ORDER BY e.starts_at,e.id`).all(station,now(),now(),now(),now()+3600).map(e=>({...e,label:/^[\x20-\x7e]{1,48}$/.test(e.label)?e.label:'ACTIVITY '+e.id.slice(0,8)}));
 }
 async function checkinSession(db, board, method, path, data, all) {
  let station=board.role==='checkin'?board.id:data.station_device_id||db.raw.prepare('SELECT station_device_id FROM hardware_cloud_settings WHERE device_id=?').get(board.id)?.station_device_id;
@@ -35,7 +35,7 @@ async function checkinSession(db, board, method, path, data, all) {
  const service=new CheckinSessions({boards:all,activities:events,activity:{id:'',label:'No open activity'}},(reporter,event)=>checkin(db,reporter,event));
  service.station=stationBoard;
  if(previous){service.selected=events.find(e=>e.id===previous.selected?.id)||events[0]||{id:'',label:'No open activity'};service.current=previous.current;}
- if(service.current&&!all.some(b=>b.id===service.current.user_device_id))service.current=null;
+ if(service.current&&(!all.some(b=>b.id===service.current.user_device_id)||db.raw.prepare('SELECT 1 FROM event_deletions WHERE event_id=?').get(service.current.activity_id)))service.current=null;
  service.expire();
  if(path.endsWith('/request')&&!service.selected.id)fail(409,'CHECKIN_CLOSED');
  try {return json(await service.route(board,method,path,data));}
@@ -63,7 +63,7 @@ async function friendSession(db,board,method,path,data,all,url) {
  finally{save(db,'friend',{waiters:[...service.waiters].map(([id,{board:b,...w}])=>[id,w]),sessions:[...service.sessions.values()].filter(s=>[s.device_a_id,s.device_b_id].some(id=>service.byBoard.get(id)===s)),reports:[...service.reports].map(([id,rows])=>[id,[...rows]]),byBoard:[...service.byBoard].map(([id,s])=>[id,s.interaction_id]),sequence:service.sequence});}
 }
 function hostActivities(db,board) {
- return db.raw.prepare(`SELECT e.id,e.title label,e.starts_at,e.ends_at,(SELECT COUNT(*) FROM checkins c WHERE c.event_id=e.id) checked_count FROM events e WHERE e.host_id=? AND e.status='published' AND e.starts_at<=? AND e.ends_at>? ORDER BY e.starts_at,e.id`).all(board.member_id,now(),now());
+ return db.raw.prepare(`SELECT e.id,e.title label,e.starts_at,e.ends_at,(SELECT COUNT(*) FROM checkins c WHERE c.event_id=e.id) checked_count FROM events e WHERE e.host_id=? AND e.status='published' AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=e.id) AND e.starts_at<=? AND e.ends_at>? ORDER BY e.starts_at,e.id`).all(board.member_id,now(),now());
 }
 function presence(peer,data) {
  if(!Number.isSafeInteger(data.presence_epoch)||Math.abs(now()-data.presence_epoch)>20||typeof data.presence_tag!=='string'||!/^[a-f0-9]{12}$/.test(data.presence_tag))fail(403,'INVALID_PRESENCE');
@@ -148,7 +148,7 @@ export async function cloudAdminRoute(request,env,url,admin,readBody) {
   db.raw.prepare('INSERT INTO hardware_cloud_settings VALUES(?,?) ON CONFLICT(device_id) DO UPDATE SET station_device_id=excluded.station_device_id').run(board.id,data.station_device_id);
  }
  if(data.host_activity_id!==undefined){
-  const e=db.raw.prepare('SELECT host_id FROM events WHERE id=?').get(data.host_activity_id);
+  const e=db.raw.prepare('SELECT host_id FROM events WHERE id=? AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=events.id)').get(data.host_activity_id);
   if(board.role==='checkin'||!e||e.host_id!==board.member_id)fail(403,'EVENT_OWNER_REQUIRED');
   if(data.enabled===false)db.raw.prepare('DELETE FROM hardware_host_grants WHERE device_id=? AND activity_id=?').run(board.id,data.host_activity_id);
   else if(data.enabled===true)db.raw.prepare('INSERT OR IGNORE INTO hardware_host_grants VALUES(?,?,?)').run(board.id,data.host_activity_id,admin.id);

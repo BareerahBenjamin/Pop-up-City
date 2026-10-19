@@ -481,3 +481,43 @@ test('admin bulk events validate all rows, commit atomically, and retry without 
   const pending=await post({...input,request_id:randomUUID(),status:'pending',events:[make('待审核批量')]});assert.equal(pending.status,201);
   assert.equal(f.db.raw.prepare('SELECT status FROM events WHERE id=?').get(pending.data.event_ids[0]).status,'pending');
 });
+
+test('admin event deletion is authorized, title-confirmed, idempotent and preserves historical facts',async t=>{
+  const f=await fixture(t);f.seed('delete-admin@example.com','admin');const member=f.seed('delete-member@example.com');
+  const admin=await f.login('delete-admin@example.com'),cookie=await f.login('delete-member@example.com');
+  const draft={title:'删除功能验证',description:'保留参与事实',category:'学习',location:'E栋2层',starts_at:stamp()+1800,ends_at:stamp()+5400,capacity:12};
+  const created=await f.call('/api/events',{method:'POST',cookie:admin,body:draft}),id=created.data.event.id;
+  await f.call(`/api/events/${id}/attendees`,{method:'POST',cookie});await f.call(`/api/events/${id}/interest`,{method:'POST',cookie});
+  const device=(await f.call(`/api/admin/members/${member}/devices`,{method:'POST',cookie:admin})).data;
+  f.db.raw.prepare('INSERT INTO checkins VALUES(?,?,?,?,?)').run(id,member,device.device_id,stamp(),'preserved-checkin');
+  const remove=(who=admin,body={confirm_title:draft.title},extra={})=>f.call(`/api/admin/events/${id}`,{method:'DELETE',cookie:who,body,...extra});
+  assert.equal((await remove(cookie)).status,403);assert.equal((await remove(null)).status,403);
+  assert.equal((await remove(admin,{confirm_title:draft.title},{origin:'https://other.example'})).status,403);
+  assert.equal((await remove(admin,{confirm_title:'旧名称'})).status,409);
+  assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM event_deletions').get().n,0);
+  assert.equal((await remove()).status,200);assert.equal((await remove()).status,200);
+  for(const who of [undefined,admin,cookie])assert.equal((await f.call('/api/events',{cookie:who})).data.events.some(e=>e.id===id),false);
+  assert.equal((await f.call(`/api/members/${created.data.event.host_id}`,{cookie})).data.events.some(e=>e.id===id),false);
+  for(const path of [`/api/events/${id}`,`/api/events/${id}/qr`,`/api/events/${id}/cover`])assert.equal((await f.call(path,{cookie:admin})).status,404);
+  for(const path of [`/api/events/${id}/attendees`,`/api/events/${id}/interest`])assert.equal((await f.call(path,{method:'POST',cookie})).status,404);
+  assert.equal((await f.call(`/api/events/${id}`,{method:'PATCH',cookie:admin,body:draft})).status,404);
+  assert.equal((await f.call(`/api/admin/events/${id}`,{method:'PATCH',cookie:admin,body:{status:'published'}})).status,404);
+  assert.equal((await f.call('/api/device/events',{headers:{Authorization:`Bearer ${device.token}`}})).data.events.length,0);
+  assert.equal((await f.call('/api/device/checkins',{method:'POST',headers:{Authorization:`Bearer ${device.token}`},body:{event_id:id,pin:'123456',request_id:'after-deletion'}})).status,409);
+  assert.equal((await f.call('/api/device/records',{headers:{Authorization:`Bearer ${device.token}`}})).data.checkins.length,1);
+  for(const table of ['events','event_registrations','event_interests','checkins'])assert.equal(f.db.raw.prepare(`SELECT COUNT(*) n FROM ${table}`).get().n,1);
+  assert.equal(f.db.raw.prepare('SELECT status FROM events WHERE id=?').get(id).status,'published');
+  const history=(await f.call(`/api/admin/events/${id}/audit`,{cookie:admin})).data.history;
+  assert.equal(history.filter(row=>row.action==='delete').length,1);assert.ok(history.some(row=>row.action==='create'));
+  assert.equal((await f.call(`/api/admin/events/${randomUUID()}`,{method:'DELETE',cookie:admin,body:{confirm_title:'不存在'}})).status,404);
+  assert.deepEqual(f.db.raw.prepare('PRAGMA foreign_key_check').all(),[]);
+});
+
+test('failed deletion audit rolls back without hiding the event',async t=>{
+  const f=await fixture(t);f.seed('rollback-delete@example.com','admin');const cookie=await f.login('rollback-delete@example.com');
+  const event=(await f.call('/api/events',{method:'POST',cookie,body:{title:'删除回滚',description:'测试',category:'学习',location:'E栋',starts_at:stamp()+3600,ends_at:stamp()+7200,capacity:12}})).data.event;
+  f.db.raw.exec("CREATE TRIGGER reject_delete_audit BEFORE INSERT ON event_audit WHEN NEW.action='delete' BEGIN SELECT RAISE(ABORT,'audit unavailable'); END");
+  assert.equal((await f.call(`/api/admin/events/${event.id}`,{method:'DELETE',cookie,body:{confirm_title:event.title}})).status,500);
+  assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM event_deletions').get().n,0);
+  assert.equal((await f.call('/api/events',{cookie})).data.events.length,1);
+});

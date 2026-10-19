@@ -1,0 +1,118 @@
+// Isolated local browser regression. No .env, persistent DB or real email.
+import assert from 'node:assert/strict';
+import {randomUUID,randomBytes,createHash} from 'node:crypto';
+import {mkdirSync} from 'node:fs';
+import {openDatabase,migrate} from '../database.js';
+import {loadConfig} from '../config.js';
+import {createApplication} from '../server.js';
+const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
+const db=openDatabase(':memory:');migrate(db);
+const origin='http://127.0.0.1:3344',now=Math.floor(Date.now()/1000),out=process.env.BROWSER_OUTPUT||'/tmp/popup-city-explore';mkdirSync(out,{recursive:true});
+const config=loadConfig({PORT:'3344',PUBLIC_ORIGIN:origin,AUTH_PEPPER:randomBytes(32).toString('hex')});
+const member=randomUUID(),token=randomBytes(32).toString('hex');
+db.raw.prepare("INSERT INTO members(id,email,nickname,role,status,created_at,updated_at) VALUES(?,?,?,'member','active',?,?)").run(member,'calendar@example.test','月历测试邻居',now,now);
+db.raw.prepare('INSERT INTO sessions VALUES(?,?,?,?)').run(createHash('sha256').update(token).digest('hex'),member,now+86400,now);
+const base=Date.parse('2026-10-20T00:00:00+08:00')/1000;
+function event(title,location,start,end,status='published',category='共创'){
+  const id=randomUUID();db.raw.prepare('INSERT INTO events(id,title,description,category,location,starts_at,ends_at,capacity,volunteer_capacity,host_id,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,20,2,?,?,?,?)').run(id,title,'本地浏览器验证示例，不会写入现有数据库。',category,location,start,end,member,status,now,now);return id;
+}
+const first=event('月历课程体验','E栋2层 · 课程教室',base+10*3600,base+11*3600,'published','学习');
+for(let i=1;i<5;i++)event(`共同创造第${i}场`,i%2?'C栋2层 · 公共活动区':'E栋2层 · 课程教室',base+(10+i)*3600,base+(11+i)*3600,'published',i%2?'科技':'共创');
+event('跨夜的相遇','迎新点',base-3600,base+7200);
+event('午夜准时结束','B栋',base-7200,base);
+event('取消的活动','E栋2层',base+17*3600,base+18*3600,'cancelled');
+event('待审核活动','E栋2层',base+18*3600,base+19*3600,'pending');
+event('远处的咖啡','街角咖啡',base+86400+3600,base+86400+7200);
+const server=createApplication(config,{db,mailer:null});await new Promise(resolve=>server.listen(3344,'127.0.0.1',resolve));
+let browser;
+try{
+  browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{})});
+  const context=await browser.newContext({viewport:{width:1512,height:1000},timezoneId:'America/Los_Angeles'});await context.addCookies([{name:'popup_city_session',value:token,url:origin}]);
+  const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.goto(origin+'/#events');await page.locator('.month-grid').waitFor();
+  assert.equal(await page.locator('nav a[href="#calendar"],nav a[href="#map"]').count(),0);
+  assert.equal(await page.locator('#campus-map').count(),1);
+  await page.locator('[data-action="city-jump"][data-target="campus-map-title"]').first().click();assert.equal(new URL(page.url()).hash,'#events');
+  await page.locator('#campus-detail [data-target="calendar-title"]').click();assert.equal(new URL(page.url()).hash,'#events');
+  await page.locator('#calendar-month').fill('2026-10');
+  await page.locator('.month-date[data-date="2026-10-20"]').click();
+  assert.equal(await page.locator('.month-grid td').count(),35);
+  assert.equal(await page.locator('.month-day-list > li').count(),6);
+  assert.match(await page.locator('.month-day-list').innerText(),/跨夜的相遇/);
+  assert.doesNotMatch(await page.locator('.month-day-list').innerText(),/午夜准时结束|待审核活动|取消的活动/);
+  assert.match(await page.locator('.month-selected .month-more').innerText(),/还有 3 场/);
+  await page.locator('.month-selected .month-more').click();assert.equal(await page.locator('#month-day-title').evaluate(e=>e===document.activeElement),true);
+  const heart=page.locator(`.month-day-list .interest-button[data-id="${first}"]`);await heart.click();
+  await page.waitForFunction(id=>document.querySelector(`.month-day-list .interest-button[data-id="${id}"]`)?.getAttribute('aria-pressed')==='true',first);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) n FROM event_interests WHERE event_id=? AND member_id=?').get(first,member).n,1);
+  await heart.click();await page.waitForFunction(id=>document.querySelector(`.month-day-list .interest-button[data-id="${id}"]`)?.getAttribute('aria-pressed')==='false',first);
+  await page.locator('[data-action="month-next"]').click();assert.equal(await page.locator('#calendar-month').inputValue(),'2026-11');
+  await page.locator('[data-action="month-prev"]').click();assert.equal(await page.locator('#calendar-month').inputValue(),'2026-10');
+  await page.locator('#calendar-month').fill('2028-02');assert.equal(await page.locator('.month-date[data-date="2028-02-29"]').count(),1);
+  await page.locator('#calendar-month').fill('2026-08');assert.equal(await page.locator('.month-grid td').count(),42);
+  await page.locator('#calendar-month').fill('2026-10');await page.locator('.month-date[data-date="2026-10-20"]').click();
+  for(const days of [1,3,7]){await page.locator(`[data-action="calendar-view"][data-days="${days}"]`).click();assert.equal(await page.locator('.calendar-day').count(),days);}
+  await page.locator('[data-action="month-view"]').click();
+  await page.locator('#discovery-query').fill('月历课程体验');await page.locator('#discovery-form').getByRole('button',{name:'搜索',exact:true}).click();
+  assert.equal(await page.locator('.month-event').count(),1);await page.locator('[data-action="discovery-reset"]').click();
+  await page.locator('.month-date[data-date="2026-10-20"]').click();await page.locator('.month-calendar').screenshot({path:`${out}/calendar-desktop.png`});
+  await page.locator(`.month-day-list a[href="#event/${first}"]`).click();await page.locator('.detail-cover').waitFor();assert.match(await page.locator('.detail-cover').innerText(),/月历课程体验/);
+  await page.goto(origin+'/#events');await page.locator('.campus-map-image').evaluate(i=>i.decode());
+  await page.locator('.campus-marker[data-place="e"]').click();assert.match(await page.locator('#campus-detail-title').innerText(),/E栋/);
+  assert.equal(await page.locator('.campus-event-list li').count(),3);assert.doesNotMatch(await page.locator('#campus-detail').innerText(),/待审核活动/);
+  await page.locator('[data-action="campus-zoom-in"]').click();assert.equal(await page.locator('#campus-scale').innerText(),'125%');
+  const viewport=page.locator('#campus-viewport'),box=await viewport.boundingBox();
+  await page.mouse.move(box.x+30,box.y+30);await page.mouse.down();await page.mouse.move(box.x+75,box.y+50,{steps:6});await page.mouse.up();
+  assert.notEqual(await page.locator('#campus-canvas').evaluate(e=>e.style.transform),'translate(0px, 0px) scale(1.25)');
+  await viewport.focus();const previous=await page.locator('#campus-canvas').evaluate(e=>e.style.transform);await page.keyboard.press('ArrowRight');assert.notEqual(await page.locator('#campus-canvas').evaluate(e=>e.style.transform),previous);
+  for(let i=0;i<5;i++)await page.locator('[data-action="campus-zoom-in"]').click();
+  assert.equal(await page.locator('#campus-scale').innerText(),'250%');assert.equal(await page.locator('[data-action="campus-zoom-in"]').isDisabled(),true);
+  await page.locator('[data-action="campus-reset"]').click();assert.equal(await page.locator('#campus-scale').innerText(),'100%');assert.equal(await page.locator('[data-action="campus-zoom-out"]').isDisabled(),true);
+  await page.locator('[data-action="campus-filter"][data-filter="living"]').click();assert.equal(await page.locator('.campus-marker').count(),1);assert.match(await page.locator('#campus-detail-title').innerText(),/C栋/);
+  await page.locator('[data-action="campus-filter"][data-filter="all"]').click();await page.locator('.campus-marker[data-place="e"]').click();
+  await page.locator('#campus-map').screenshot({path:`${out}/map-desktop.png`});
+  assert.equal(await page.locator('.campus-route,#campus-traveler,[data-action="campus-motion"]').count(),0);
+  await page.locator('.campus-marker[data-place="b"]').click();
+  assert.equal(await page.locator('#campus-canvas').evaluate(e=>e.getAnimations({subtree:true}).length),0);
+  assert.equal(await page.locator('.campus-marker').first().evaluate(e=>getComputedStyle(e).transitionDuration),'0s');
+  for(const width of [320,375,768,1100]){
+    await page.setViewportSize({width,height:850});await page.goto(origin+'/#events');await page.locator('#campus-viewport').waitFor();
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,`map overflow ${width}`);
+    if(width===375)await page.locator('#campus-map').screenshot({path:`${out}/map-mobile.png`});
+    await page.goto(origin+'/#events');await page.locator('#calendar-month').fill('2026-10');await page.locator('.month-date[data-date="2026-10-20"]').click();
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,`calendar overflow ${width}`);
+    if(width===375)await page.locator('.month-calendar').screenshot({path:`${out}/calendar-mobile.png`});
+  }
+  const guest=await browser.newContext({viewport:{width:375,height:850}}),guestPage=await guest.newPage();
+  await guestPage.goto(origin+'/#events');await guestPage.locator('#calendar-month').fill('2026-10');await guestPage.locator('.month-date[data-date="2026-10-20"]').click();await guestPage.locator(`.month-day-list .interest-button[data-id="${first}"]`).click();await guestPage.locator('#login-request-form').waitFor();
+  // The same isolated member now reviews the real administrator deletion flow.
+  db.raw.prepare("UPDATE members SET role='admin' WHERE id=?").run(member);
+  await page.setViewportSize({width:1280,height:900});await page.reload();await page.goto(origin+'/#admin');
+  await page.locator('[data-action="admin-tab"][data-tab="hardware"]').click();await page.getByRole('heading',{name:'硬件管理',exact:true}).waitFor();
+  await page.locator('[data-action="admin-tab"][data-tab="events"]').click();
+  const cancelled=page.locator('.admin-event').filter({hasText:'取消的活动'});
+  assert.equal(await cancelled.count(),1);
+  await cancelled.locator('[data-action="delete-event"]').click();
+  await page.locator('#event-delete-form').waitFor();
+  assert.equal(await page.locator('#event-delete-form [data-action="close"]').evaluate(e=>e===document.activeElement),true);
+  await page.getByRole('button',{name:'保留活动',exact:true}).click();assert.equal(await cancelled.count(),1);
+  await cancelled.locator('[data-action="delete-event"]').click();
+  await page.getByRole('button',{name:'确认删除活动',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('#modal').open);
+  assert.equal(await cancelled.count(),0);assert.equal(await page.locator('#admin-events-title').evaluate(e=>e===document.activeElement),true);
+  const active=page.locator(`.admin-event[data-event-id="${first}"]`);
+  await active.locator('[data-action="delete-event"]').click();
+  // A failed response keeps the confirmation open, enables retry, and retains the record.
+  await page.route(`**/api/admin/events/${first}`,route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'测试暂时不可用'})}),{times:1});
+  await page.getByRole('button',{name:'确认删除活动',exact:true}).click();await page.locator('#form-error').filter({hasText:'测试暂时不可用'}).waitFor();
+  assert.equal(await page.getByRole('button',{name:'确认删除活动',exact:true}).isEnabled(),true);assert.equal(await active.count(),1);
+  await page.getByRole('button',{name:'确认删除活动',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('#modal').open);
+  assert.equal(await active.count(),0);await page.reload();await page.locator('[data-action="admin-tab"][data-tab="events"]').click();await page.locator('#admin-events-title').waitFor();assert.equal(await active.count(),0);
+  await page.goto(origin+'/#events');await page.locator('#calendar-month').fill('2026-10');await page.locator('.month-date[data-date="2026-10-20"]').click();
+  assert.equal(await page.locator(`a[href="#event/${first}"]`).count(),0);
+  assert.doesNotMatch(await page.locator('.month-calendar').innerText(),/取消的活动/);
+  await page.locator('.campus-marker[data-place="e"]').click();assert.equal(await page.locator(`.campus-event-list a[href="#event/${first}"]`).count(),0);
+  console.log('PASSED: cancelled activities excluded from schedules; administrator delete confirmation/cancel/error/retry/persistence, deleted activity absent from cards/calendar/map.');
+  assert.deepEqual(errors,[]);
+  console.log('PASSED: month navigation/leap year/six rows/overflow/day agenda/cross-midnight/search/all views/detail/interest persistence; map places/events/filter/zoom bounds/drag/keyboard/reset/static map without route animations; 320/375/768/1100 layouts; guest login gate; zero page errors.');
+  console.log(`Screenshots: ${out}`);
+}finally{await browser?.close();await new Promise(resolve=>server.close(resolve));db.close();}
