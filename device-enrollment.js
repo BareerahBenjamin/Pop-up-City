@@ -8,7 +8,7 @@ const hex=s=>typeof s==='string'&&/^[a-f0-9]{64}$/.test(s);
 const fail=(status,code,message)=>{throw new HardwareError(status,code,message);};
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
 function transaction(db,fn){db.raw.exec('BEGIN IMMEDIATE');try{const result=fn();db.raw.exec('COMMIT');return result;}catch(e){db.raw.exec('ROLLBACK');throw e;}}
-async function signed(board,data){if(data.state==='bound'){data={...data,member_name_bitmap:await nameBitmap(data.member_name,true)};}const payload=JSON.stringify({...data,recipient_device_id:board.id});return json({payload,signature:createHmac('sha256',Buffer.from(board.token_hash,'hex')).update(payload).digest('hex')});}
+async function signed(board,data){if(data.state==='pending')data={...data,member_label_bitmap:await nameBitmap(data.member_label)};if(data.state==='bound'){data={...data,member_name_bitmap:await nameBitmap(data.member_name,true)};}const payload=JSON.stringify({...data,recipient_device_id:board.id});return json({payload,signature:createHmac('sha256',Buffer.from(board.token_hash,'hex')).update(payload).digest('hex')});}
 function audit(db,row,action){db.raw.prepare('INSERT INTO device_claim_audit VALUES(?,?,?,?,?,?)').run(randomUUID(),row.id,row.requested_member_id,row.requested_by,action,now());}
 function memberAvailable(db,id){
  const member=db.raw.prepare("SELECT id,nickname,email FROM members WHERE id=? AND status!='disabled'").get(id);

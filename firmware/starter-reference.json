@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/Jiajia-Chen/herstory-ai-passport-starter",
+  "commit": "f8798a349fd70715c0d62f4a84d1a6b148d99441",
+  "contract": "herstory-event-v1",
+  "files": {
+    "partitions.csv": "5036f083d1a2fd9006a1d5c534ac82a54423fd62db563cce3a66c76b5788598b",
+    "event-contract.json": "49a76283aefa1d2e3b68681484f5e518d9699c5491054932682d3d66e29900c9",
+    "tools/validate_event_app.py": "1e3dc05519a491c9922da5b8b00287b1943a73d8338b3c4191050badcf606bef"
+  }
+}

@@ -8,6 +8,7 @@
   },
   "scripts": {
     "start": "node --env-file=.env server.js",
+    "preview:dashboard": "node scripts/preview-dashboard.mjs",
     "migrate": "node --env-file=.env manage.js migrate",
     "admin": "node --env-file=.env manage.js admin",
     "test": "node --test test/*.test.js",

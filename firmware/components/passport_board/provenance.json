@@ -1,0 +1,27 @@
+{
+  "source": "folotoy_herstory/folotoy BSP snapshot",
+  "license": "../../licenses/FoloToy-MIT.txt",
+  "files": [
+    {
+      "file": "include/bsp_pins.h",
+      "sha256": "b3482f27dbc8e9ff0d82308192b15542992bd3e2af345bb232112912a6e76049"
+    },
+    {
+      "file": "include/bsp_display.h",
+      "sha256": "fc07ffbeb66ded0ed5a259122aa766d7a8628859d506bad45e86f2548f422d08"
+    },
+    {
+      "file": "include/bsp_button.h",
+      "sha256": "7d5525fd5a443c6302f6c38f0ef5ccc7dd333096e359031e2d645d24fb781309"
+    },
+    {
+      "file": "src/bsp_display.c",
+      "sha256": "3fe74309d2297bd5e321228eb45b2f7c4392d28d5b7110e9241ba179ba69d868"
+    },
+    {
+      "file": "src/bsp_button.c",
+      "sha256": "376550acdb890c020ec5ce77536d21b02d6b0180902f79dc6ef6d8e0a84aa075"
+    }
+  ],
+  "modifiedSources": false
+}

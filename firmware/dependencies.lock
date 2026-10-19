@@ -1,0 +1,17 @@
+dependencies:
+  cmake_utilities:
+    dependencies: []
+    source:
+      path: /Users/yeyutong/project/Pop-up-City/firmware/components/cmake_utilities
+      type: local
+    version: 1.1.1
+  idf:
+    source:
+      type: idf
+    version: 5.5.3
+direct_dependencies:
+- espressif/cmake_utilities
+- idf
+manifest_hash: c65c63692e57a36f72306cce158867b8154e43b458c09759709a146309bbf9c2
+target: esp32c3
+version: 2.0.0

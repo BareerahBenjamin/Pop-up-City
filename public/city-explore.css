@@ -1,0 +1,138 @@
+/* Herstory activity calendar and static campus map. */
+.city-section-links { display:flex; flex-wrap:wrap; gap:12px 24px; margin:28px 0 8px; }
+.city-section-links button { min-height:44px; font-size:1rem; }
+.campus-map-section { margin:48px 0; padding-top:28px; border-top:1px solid var(--line); }
+#calendar-title,#campus-map-title,#discovery-title { scroll-margin-top:calc(var(--site-header-height,0px) + 24px); }
+.month-calendar { --month-pink:#a50d68; --month-blue:#2f5f92; --month-yellow:#855b0c; --month-neutral:#5b566e; }
+.calendar-modes { display:flex; flex-wrap:wrap; border-radius:16px; }
+.calendar-modes .filter { white-space:nowrap; }
+.month-toolbar { display:flex; align-items:center; justify-content:space-between; gap:20px; margin:24px 0 16px; }
+.month-heading { display:flex; align-items:baseline; gap:16px; flex-wrap:wrap; }
+.month-heading h3 { font-size:1.75rem; font-weight:600; margin:0; }
+.month-heading > span { color:var(--muted); font-size:1rem; }
+.month-navigation { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.month-navigation > .btn { min-width:44px; min-height:44px; padding:8px 12px; }
+.month-picker input { font-size:1rem; max-width:170px; padding:9px 12px; min-height:44px; border-radius:999px; background:var(--color-surface); }
+.calendar-legend { display:flex; flex-wrap:wrap; align-items:center; gap:10px 20px; margin:16px 0; font-size:.9375rem; color:var(--muted); }
+.calendar-legend > span { display:inline-flex; align-items:center; gap:7px; }
+.calendar-legend .legend-hint { margin-left:auto; }
+.tone-pink { --dot:var(--month-pink,#a50d68); }
+.tone-blue { --dot:var(--month-blue,#2f5f92); }
+.tone-yellow { --dot:var(--month-yellow,#855b0c); }
+.tone-neutral { --dot:var(--month-neutral,#5b566e); }
+.month-dot { width:7px; height:7px; flex-shrink:0; display:inline-block; border-radius:50%; background:var(--dot); }
+.month-scroll { overflow-x:auto; border:1px solid var(--line); border-radius:18px; background:#fff7fb; }
+.month-grid { width:100%; min-width:700px; border-collapse:separate; border-spacing:0; table-layout:fixed; margin:0; }
+.month-grid th { text-align:left; font-size:1rem; font-weight:500; color:var(--muted); height:48px; padding:10px 12px; background:#f8dce9; border-bottom:1px solid var(--line); }
+.month-grid td { border:0; border-right:1px solid var(--line); border-bottom:1px solid var(--line); vertical-align:top; text-align:left; padding:8px 6px 12px; height:158px; }
+.month-grid td:last-child { border-right:0; }
+.month-grid tr:last-child td { border-bottom:0; }
+.month-grid .outside-month { background:#f7e6ef; }
+.outside-month .month-date { color:#8c7481; }
+.month-grid .month-selected { background:#fce5f0; box-shadow:inset 0 0 0 2px #b85183; }
+.month-date { display:flex; align-items:center; justify-content:flex-start; gap:6px; min-width:44px; min-height:40px; border:0; background:transparent; color:var(--ink); font-size:1rem; padding:3px 6px; border-radius:9px; margin-bottom:4px; }
+.month-date time { min-width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center; white-space:nowrap; border-radius:50%; }
+.month-date > span { font-size:.75rem; }
+.month-date:hover { background:#f2cddd; }
+.month-today .month-date time { background:var(--pink); color:white; }
+.month-events { list-style:none; padding:0; margin:0; }
+.month-events li { margin:3px 0; }
+.month-event { display:flex; align-items:center; gap:5px; min-width:0; min-height:30px; color:var(--ink); padding:4px; border-radius:5px; text-decoration:none; font-size:.875rem; line-height:1.5; }
+.month-event:hover { background:#efd6e2; }
+.month-event > time { font-size:.75rem; font-variant-numeric:tabular-nums; flex-shrink:0; color:var(--muted); }
+.month-event > span:not(.month-dot) { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.month-event b { color:var(--pink); font-size:.75rem; }
+.month-event.is-cancelled { text-decoration:line-through; color:var(--muted); }
+.month-more { border:0; background:transparent; color:var(--pink); min-height:36px; text-align:left; padding:4px; font-size:.875rem; }
+.month-more:hover { text-decoration:underline; }
+.month-day-agenda { border-bottom:1px solid var(--line); padding-bottom:20px; margin:24px 0 32px; }
+.month-day-agenda .section-head { margin:0 0 18px; gap:16px; }
+.month-day-agenda h3 { font-size:1.5rem; margin:8px 0 0; }
+.month-day-agenda h3 .muted { font-weight:400; font-size:1rem; margin-left:10px; }
+.month-day-list { list-style:none; padding:0; margin:0; }
+.month-day-list li { display:grid; grid-template-columns:110px 1fr auto; align-items:start; gap:20px; padding:20px 0; border-top:1px solid var(--line); }
+.month-day-time strong,.month-day-time span { display:block; }
+.month-day-time strong { font-size:1.5rem; font-weight:500; font-variant-numeric:tabular-nums; }
+.month-day-time span { color:var(--muted); font-size:.875rem; margin-top:6px; }
+.month-day-list a { display:block; font-size:1.25rem; font-weight:600; text-decoration:none; margin:8px 0; overflow-wrap:anywhere; }
+.month-day-list a:hover { text-decoration:underline; }
+.month-day-list p,.month-empty { font-size:1rem; color:var(--muted); }
+.campus-heading { display:flex; align-items:center; justify-content:space-between; gap:20px; margin-bottom:20px; flex-wrap:wrap; }
+.campus-heading h2 { font-size:1.75rem; margin:8px 0; }
+.campus-heading p { font-size:1rem; color:var(--muted); margin:0; }
+.campus-filters { display:flex; gap:4px; flex-wrap:wrap; }
+.campus-filters .filter { font-size:1rem; min-height:44px; padding:8px 12px; }
+.campus-layout { display:grid; grid-template-columns:minmax(0,1fr) 310px; gap:20px; align-items:start; }
+.campus-map-panel { border:1px solid var(--line); border-radius:18px; overflow:hidden; background:var(--color-surface); }
+.campus-map-toolbar { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:12px 16px; border-bottom:1px solid var(--line); }
+.campus-map-toolbar > span { font-size:.9375rem; color:var(--muted); }
+.campus-zoom { display:flex; align-items:center; gap:4px; flex-shrink:0; }
+.campus-zoom .icon-button { min-width:40px; min-height:40px; padding:4px; font-size:1.5rem; border-radius:50%; }
+.campus-zoom output { font-size:.875rem; width:45px; text-align:center; font-variant-numeric:tabular-nums; }
+.campus-zoom .text-button { font-size:.875rem; min-height:40px; padding:4px 8px; }
+.campus-viewport { position:relative; width:100%; aspect-ratio:4/3; overflow:hidden; background:#f2eddb; isolation:isolate; }
+.campus-viewport.is-zoomed { cursor:grab; touch-action:none; }
+.campus-viewport.is-dragging { cursor:grabbing; }
+.campus-canvas { width:100%; height:100%; position:relative; transform-origin:center; }
+.campus-map-image { display:block; width:100%; height:100%; object-fit:contain; user-select:none; }
+.campus-marker { position:absolute; translate:-50% -50%; width:44px; height:44px; padding:4px; border:2px solid white; background:#fff8fc; color:#8b0e55; border-radius:50%; display:grid; place-items:center; box-shadow:0 2px 8px #3b1d2f40; font-size:1rem; font-weight:700; cursor:pointer; transition:none; animation:none; }
+.campus-marker.is-selected { background:var(--pink); color:white; outline:3px solid #fff8fc; outline-offset:3px; z-index:2; }
+.campus-marker:focus-visible { outline:3px solid #1f5db2; outline-offset:4px; }
+.campus-map-caption { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px; }
+.campus-map-caption p { font-size:.875rem; color:var(--muted); margin:0; }
+.campus-map-caption button { font-size:.875rem; white-space:nowrap; min-height:40px; }
+.campus-detail { background:#fff7fb; padding:24px; border:1px solid var(--line); border-radius:18px; min-width:0; }
+.campus-detail-head { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+.campus-place-number { display:inline-flex; width:40px; height:40px; flex-shrink:0; align-items:center; justify-content:center; background:#f1d3e2; color:#8b0e55; border-radius:50%; font-size:.9375rem; font-weight:600; font-variant-numeric:tabular-nums; }
+.campus-detail h2 { font-size:1.5rem; line-height:1.5; margin:0 0 8px; }
+.campus-detail .campus-detail-tagline { color:var(--pink); margin-top:0; font-weight:500; }
+.campus-detail p { font-size:1rem; line-height:1.8; color:var(--muted); }
+.campus-events-heading { display:flex; align-items:baseline; flex-wrap:wrap; gap:10px; }
+.campus-events-heading h3 { font-size:1.125rem; margin:0; }
+.campus-events-heading > span { font-size:.875rem; color:var(--muted); }
+.campus-event-list { list-style:none; margin:0 0 24px; padding:0; }
+.campus-event-list li { padding:16px 0; border-bottom:1px solid var(--line); }
+.campus-event-list a { display:block; font-size:1.125rem; font-weight:600; text-decoration:none; margin:8px 0; overflow-wrap:anywhere; }
+.campus-event-list a:hover { text-decoration:underline; }
+.campus-event-list p { font-size:.875rem; margin:0; }
+.campus-detail .btn { font-size:.9375rem; padding:10px 12px; }
+.month-calendar button:focus-visible,.month-calendar a:focus-visible,.campus-layout button:focus-visible,.month-scroll:focus-visible,.campus-viewport:focus-visible { outline:3px solid #1f5db2; outline-offset:2px; }
+.month-calendar button:disabled,.campus-zoom button:disabled { opacity:.4; cursor:default; }
+@media (max-width:1250px) {
+  .campus-layout { grid-template-columns:minmax(0,1fr); }
+  .campus-detail { display:block; }
+}
+@media (max-width:767px) {
+  .month-toolbar { align-items:flex-start; flex-direction:column; gap:16px; }
+  .month-heading { gap:8px 12px; }
+  .month-heading h3 { font-size:1.5rem; }
+  .calendar-legend .legend-hint { flex-basis:100%; margin-left:0; }
+  .month-grid td { height:150px; }
+  .month-date { min-height:44px; }
+  .month-event { min-height:40px; }
+  .month-scroll { border-radius:12px; }
+  .month-day-agenda .section-head { align-items:flex-start; }
+  .month-day-list li { grid-template-columns:70px minmax(0,1fr) 40px; gap:12px; }
+  .month-day-time strong { font-size:1.25rem; }
+  .month-day-time span { font-size:.75rem; }
+  .month-day-list .interest-heart { padding:8px; }
+  .month-day-list .eyebrow { font-size:.75rem; }
+  .month-day-list a { font-size:1.125rem; }
+  .month-day-list p { font-size:.9375rem; }
+  .campus-heading h2 { font-size:1.5rem; }
+  .campus-heading { gap:16px; }
+  .campus-map-toolbar { flex-wrap:wrap; padding:10px; }
+  .campus-map-toolbar > span { font-size:.875rem; }
+  .campus-zoom { margin-left:auto; }
+  .campus-marker { width:36px; height:36px; font-size:.8125rem; }
+  .campus-marker::after { content:''; position:absolute; inset:-4px; border-radius:50%; }
+  .campus-map-caption { padding:8px 12px; gap:8px; }
+  .campus-map-caption p { font-size:.75rem; }
+  .campus-map-caption button { font-size:.75rem; }
+  .campus-detail { padding:20px; }
+}
+
+
+.site-layout .event-delete-button { color:#a02341; }
+.site-layout .event-delete-confirm { background:#a02341; border-color:#a02341; color:white; }
+.site-layout .event-delete-confirm:disabled { opacity:.6; cursor:wait; }

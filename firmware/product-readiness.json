@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0-rc2",
+  "startup_binding": true,
+  "planet_name": true,
+  "friend_mutual_consent": true,
+  "host_single_batch": true,
+  "reconnect_reconciliation": true,
+  "display_input": true,
+  "persistent_identity": true,
+  "host_tests": true,
+  "notes": "RC2 integrates authenticated self/peer avatar hair length/color and shirt color with 15 reviewed hair mappings; immutable receipts restore the original appearance after reboot. Source/host verified first-device candidate, not a stable release. Physical acceptance, Windows/Linux USB, organizer app-ID uniqueness and controlled cross-firmware save preservation remain unverified. Do not flash automatically or erase the whole chip.",
+  "stage": "first-device-acceptance-candidate",
+  "device_tests": "not_run"
+}

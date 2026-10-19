@@ -3,15 +3,17 @@
 - **版本：** v1.0
 - **负责人：** 网站／数据库／后台负责人
 - **状态：** 支持保留现有数据的增量发布；真实投递与真机待验收
-- **最后更新：** 2026-10-07
+- **最后更新：** 2026-10-15
 
 ## 交付内容与适用环境
+
+正式入口已于 2026-10-12 切换为 `https://herstory.net.cn`，现有站点的主路由已反向代理至 3300。未来部署保留现有 Workshop 路由、证书及其他站点，不再新增同名 Caddy 站点。详见 [域名迁移记录](domain_migration_v1.0.md)。
 
 准备的 `herstory-popup-city-20261006-cloud.tar.gz` 是可部署源码，含主网站、内嵌3D、成长规则、RGB565渲染／存储／下载、11个增量迁移、依赖锁文件、配置模板、自检脚本和本文。配套 `.sha256` 校验上传完整性。
 
 v1.4交付包不含Game Jam和资料优先流程。包含这两项功能的发布包从v1.5开始；每次发布应重新打包当前源码，校验Git提交号与文件摘要，并将下方路径改为本次新包所在目录。
 
-适用于项目现有方案：Ubuntu/Debian Linux、systemd、Caddy 2、单个Node进程和SQLite持久磁盘。服务器可以已有其他网站。默认新网站域名沿用 `kunyuan.site`；如实际使用别的域名，在配置与Caddy片段中同步替换。不适用于无持久磁盘的临时容器或多台服务器同时共享SQLite。
+适用于项目现有方案：Ubuntu/Debian Linux、systemd、Caddy 2、单个Node进程和SQLite持久磁盘。服务器可以已有其他网站。默认网站域名为 `herstory.net.cn`；如实际使用别的域名，在配置与Caddy片段中同步替换。不适用于无持久磁盘的临时容器或多台服务器同时共享SQLite。
 
 发布包不含本机 `.env`、成员数据库、SMTP密码、设备令牌、SSH密钥、node_modules或Mac运行时。Node与依赖在Linux服务器安装。源码部署不会自动搬迁本机成员、已确认头像或星球数据。
 
@@ -132,7 +134,7 @@ sudoedit /etc/herstory-popup-city/server.env
 | --- | --- |
 | NODE_ENV | production |
 | HOST / PORT | 127.0.0.1 / 3300，或已经确认的新端口 |
-| PUBLIC_ORIGIN | https://kunyuan.site，须与实际域名相同 |
+| PUBLIC_ORIGIN | https://herstory.net.cn，须与实际域名相同 |
 | DATABASE_PATH | /var/lib/herstory-popup-city/popup-city.sqlite |
 | AUTH_PEPPER | 随机64位hex，一经使用保持稳定 |
 | MAIL_MODE | 配置好邮件后smtp；准备阶段可disabled |
@@ -180,7 +182,7 @@ curl -fsS http://127.0.0.1:3300/healthz
 
 ## 9. 域名与HTTPS
 
-在域名管理台确认kunyuan.site没有现存业务冲突后，将根域名A记录指向服务器IP。检查AAAA，避免IPv6指向另一台服务器；保留邮件MX/TXT及其他站点记录。云防火墙和主机防火墙需允许80/443。
+herstory.net.cn 的根域名及 www 已指向当前服务器，无需再次修改解析。未来迁移时检查 A、AAAA，避免 IPv6 指向另一台服务器；保留邮件 MX/TXT 及其他站点记录。云防火墙和主机防火墙需允许 80/443。
 
 先查看已有Caddy启动配置：
 
@@ -188,7 +190,7 @@ curl -fsS http://127.0.0.1:3300/healthz
 sudo systemctl cat caddy
 ```
 
-若已有站点，只将本包 `deploy/Caddyfile.snippet` 添加到现有import文件或完整Caddyfile中，**不拿片段覆盖原文件**。这段配置对设备API不启用压缩，直接转发二进制画面和206响应。修改域名／端口时同步server.env。匹配器压缩设置依据 [Caddy encode文档](https://caddyserver.com/docs/caddyfile/directives/encode)。
+当前已有 herstory.net.cn 站点，应把本包 `deploy/Caddyfile.snippet` 的反向代理合并到现有主路由，保留 TLS 和 Workshop 处理器；只有目标域名尚不存在时才增加完整站点。**不拿片段覆盖原文件，不重复声明同名站点。** 这段配置对设备 API 不启用压缩，直接转发二进制画面和 206 响应。修改域名／端口时同步 server.env。匹配器压缩设置依据 [Caddy encode 文档](https://caddyserver.com/docs/caddyfile/directives/encode)。
 
 以下例子仅适用于实际配置文件正是 `/etc/caddy/Caddyfile` 的主机；自定义路径应使用实际路径和服务reload配置。
 
@@ -199,7 +201,7 @@ sudo cp -a /etc/caddy/Caddyfile "$DEPLOY_CADDY_BACKUP"
 sudoedit /etc/caddy/Caddyfile
 sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 sudo systemctl reload caddy
-curl -fsS https://kunyuan.site/healthz
+curl -fsS https://herstory.net.cn/healthz
 ```
 
 首次且Caddyfile不存在时，用 `sudoedit` 新建，只粘贴本项目站点；此时不存在旧文件备份步骤。已有备份名称时选择新名称，不覆盖上次备份。validate失败时不reload。reload方式需与现有Caddy服务一致；同时核对旧域名仍能访问。[Caddy validate/reload官方说明](https://caddyserver.com/docs/command-line)
@@ -217,6 +219,8 @@ curl -fsS https://kunyuan.site/healthz
 画像存储详情见 [RGB565存储契约](rgb565_storage_v1.0.md)。现有2D美术只含B已实现的像素规则，不保证完整3D奖励已全部有2D形象；真机联调须单独验收。
 
 ## 已有云端数据库升级
+
+当前线上版本、最近实际发布与本节的差异、历史部署和回退脚本、Rae 的服务器执行权限见 [部署交接](docs/deployment_handoff_v1.0.md)。历史脚本含固定版本条件，不能原样用于未来发布；GitHub CI 不自动部署。
 
 从0001–0010升级到Game Jam的0011时，必须先一致性备份云库，再执行下面的增量迁移与服务切换，不能只换代码。已应用0011的库再次升级时会校验并跳过此迁移。0011只新增作品表，保留原成员、头像与星球记录。不要重新创建管理员或覆盖配置／数据库。
 

@@ -1,3 +1,4 @@
+import { memberVisual } from './hardware-cloud/avatar-visual.mjs';
 import { derivePixelPlanet, configurePlanetEvent } from './planet-growth.js';
 import { createHash, createHmac, timingSafeEqual, randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
@@ -62,7 +63,7 @@ export function checkin(db, reporter, data) {
   proof(board, payload, data.user_proof);
   return transaction(db, () => {
     const previous = replay(db, data, payload); if (previous) return previous;
-    const stamp = now(), e = db.raw.prepare('SELECT * FROM events WHERE id=?').get(data.activity_id);
+    const stamp = now(), e = db.raw.prepare('SELECT * FROM events WHERE id=? AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=events.id)').get(data.activity_id);
     const permission = db.raw.prepare('SELECT * FROM checkin_station_activities WHERE station_device_id=? AND activity_id=? AND revoked_at IS NULL').get(station.id, data.activity_id);
     if (!permission || stamp < permission.opens_at || stamp >= permission.closes_at) fail(403, 'STATION_NOT_AUTHORIZED', '签到板未获得该活动的当前授权');
     if (!e || e.status !== 'published' || stamp < e.starts_at - 3600 || stamp >= e.starts_at) fail(409, 'CHECKIN_CLOSED', '活动当前不可签到');
@@ -87,7 +88,7 @@ export function checkin(db, reporter, data) {
     return receipt;
   });
 }
-export function friend(db, reporter, data) {
+export function friend(db, reporter, data, trustedVisual = null) {
   common(data);
   const a = device(db, data.device_a_id, 'user'), b = device(db, data.device_b_id, 'user');
   if (a.id >= b.id || a.member_id === b.member_id) fail(400, 'INVALID_PAIR', '设备 ID 必须排序且属于不同用户');
@@ -107,7 +108,9 @@ export function friend(db, reporter, data) {
     }
     const revisions = [ma, mb].map(member => ({ user_id: member, revision: planetSnapshotInTransaction(db, member).revision }));
     const receipt = { receipt_id: randomUUID(), interaction_id: data.interaction_id, status: 'connected', friendship_id: relationship.id,
-      established_at: relationship.established_at, duplicate, planets: revisions };
+      established_at: relationship.established_at, duplicate, planets: revisions, device_a_id:a.id,device_b_id:b.id,
+      visual_a:trustedVisual?.a?.member_id===a.member_id?trustedVisual.a:memberVisual(a.member_id,db.raw.prepare('SELECT avatar_json FROM members WHERE id=?').get(a.member_id)?.avatar_json),
+      visual_b:trustedVisual?.b?.member_id===b.member_id?trustedVisual.b:memberVisual(b.member_id,db.raw.prepare('SELECT avatar_json FROM members WHERE id=?').get(b.member_id)?.avatar_json) };
     saveInteraction(db, data, 'friend', reporter, a, b, null, payload, receipt);
     return receipt;
   });
@@ -186,7 +189,7 @@ export async function hardwareAdminRoute(request, env, url, admin, readBody) {
   if (request.method === 'PUT' && p === '/api/admin/planet/activity-mappings') {
     const data = await readBody(request);
     if (!catalog.some(a => a.activity_id === data.catalog_activity_id)) fail(400, 'UNKNOWN_CATALOG_ACTIVITY', '星球目录活动不存在');
-    if (!db.raw.prepare('SELECT 1 FROM events WHERE id=?').get(id(data.activity_id))) fail(404, 'ACTIVITY_NOT_FOUND', '网站活动不存在');
+    if (!db.raw.prepare('SELECT 1 FROM events WHERE id=? AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=events.id)').get(id(data.activity_id))) fail(404, 'ACTIVITY_NOT_FOUND', '网站活动不存在');
     if (db.raw.prepare('SELECT 1 FROM planet_growth_release').get()) return json(configurePlanetEvent(db,admin,data));
     db.raw.prepare(`INSERT INTO planet_activity_catalog_map VALUES(?,?,?,?) ON CONFLICT(catalog_activity_id) DO UPDATE SET
       activity_id=excluded.activity_id,configured_by=excluded.configured_by,updated_at=excluded.updated_at`).run(data.catalog_activity_id, data.activity_id, admin.id, now());
@@ -206,7 +209,7 @@ export async function hardwareAdminRoute(request, env, url, admin, readBody) {
   }
   if (request.method === 'PUT' && p === '/api/admin/checkin-stations/activities') {
     const data = await readBody(request); device(db, data.station_device_id, 'checkin'); id(data.activity_id);
-    if (!db.raw.prepare('SELECT 1 FROM events WHERE id=?').get(data.activity_id)) fail(404, 'ACTIVITY_NOT_FOUND', '活动不存在');
+    if (!db.raw.prepare('SELECT 1 FROM events WHERE id=? AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=events.id)').get(data.activity_id)) fail(404, 'ACTIVITY_NOT_FOUND', '活动不存在');
     if (!Number.isSafeInteger(data.opens_at) || !Number.isSafeInteger(data.closes_at) || data.opens_at < 1 || data.closes_at <= data.opens_at || data.revoked !== undefined && typeof data.revoked !== 'boolean') fail(400, 'INVALID_WINDOW', '授权时间或撤销设置无效');
     db.raw.prepare(`INSERT INTO checkin_station_activities VALUES(?,?,?,?,?,?) ON CONFLICT(station_device_id,activity_id) DO UPDATE SET
       opens_at=excluded.opens_at,closes_at=excluded.closes_at,authorized_by=excluded.authorized_by,revoked_at=excluded.revoked_at`).run(data.station_device_id, data.activity_id, data.opens_at, data.closes_at, admin.id, data.revoked === true ? now() : null);

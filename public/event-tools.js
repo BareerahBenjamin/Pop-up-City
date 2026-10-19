@@ -106,19 +106,16 @@ function upcomingInterests(events,seconds=Date.now()/1000){const tomorrow=daySta
 function interestAgenda(events,future=false){return `<ol class="agenda-list ${future?'upcoming-agenda':'today-agenda'}">${events.map(e=>`<li id="interest-agenda-${esc(e.id)}" data-interest-surface="agenda:${esc(e.id)}" class="${highlightedInterestId===e.id?'agenda-highlight':''}"><time datetime="${new Date(e.starts_at*1000).toISOString()}">${future?`${dayHeading(eventDay(e.starts_at))}<br>`:eventDay(e.starts_at)!==eventDay(Date.now()/1000)?'跨日 ':''}${eventClock(e.starts_at)}</time><div><a href="#event/${esc(e.id)}">${esc(e.title)}</a><p>${esc(e.location)} · ${eventTimeLabel(e)}${e.my_attending?' · 已报名':''}</p></div>${interestButton(e,true)}${interestFeedbackSlot(e,true)}</li>`).join('')}</ol>`}
 function todaySchedule(){
   const events=interestedToday(state.events),upcoming=upcomingInterests(state.events);
-  return `<section class="today-schedule" aria-labelledby="today-title"><div class="section-head"><div><span class="eyebrow">MY DAY / ${dayHeading(eventDay(Date.now()/1000))}</span><h2 id="today-title" tabindex="-1">今日感兴趣</h2><p>感兴趣不等于报名。请提前到场，活动开始后不可补报或迟到签到。</p></div></div>${!state.me?`<div class="empty">登录后，收藏你的活动安排。<button class="btn light" data-action="login">成员登录</button></div>`:`${events.length?interestAgenda(events):'<p class="schedule-empty">今天暂无感兴趣活动。点活动卡片上的爱心，收藏你的安排。</p>'}${upcoming.length?`<h3 class="upcoming-title" id="upcoming-title" tabindex="-1">未来感兴趣 <span class="muted">${upcoming.length} 场</span></h3>${interestAgenda(upcoming,true)}`:''}`}</section>`;
+  return `<section class="today-schedule" aria-labelledby="today-title"><div class="section-head"><div><span class="eyebrow">MY DAY / ${dayHeading(eventDay(Date.now()/1000))}</span><h3 id="today-title" tabindex="-1">今日感兴趣</h3><p>感兴趣不等于报名。请提前到场，活动开始后不可补报或迟到签到。</p></div></div>${!state.me?`<div class="empty">登录后，收藏你的活动安排。<button class="btn light" data-action="login">成员登录</button></div>`:`${events.length?interestAgenda(events):'<p class="schedule-empty">今天暂无感兴趣活动。点活动卡片上的爱心，收藏你的安排。</p>'}${upcoming.length?`<h3 class="upcoming-title" id="upcoming-title" tabindex="-1">未来感兴趣 <span class="muted">${upcoming.length} 场</span></h3>${interestAgenda(upcoming,true)}`:''}`}</section>`;
 }
-function calendarSection(events){
-  const start=dayStart(calendarDate),published=events.filter(e=>e.status==='published'||e.status==='cancelled').sort((a,b)=>a.starts_at-b.starts_at||a.id.localeCompare(b.id));
-  const days=Array.from({length:calendarDays},(_,i)=>{const from=start+i*86400,day=eventDay(from),items=published.filter(e=>e.starts_at<from+86400&&e.ends_at>from);return `<section class="calendar-day ${day===eventDay(Date.now()/1000)?'is-today':''}" aria-label="${dayHeading(day)}"><h3>${dayHeading(day)}</h3>${items.length?items.map(e=>`<article class="calendar-event" data-interest-surface="calendar:${day}:${esc(e.id)}"><p class="calendar-time">${e.starts_at<from?'跨日 · ':''}${eventClock(e.starts_at)} — ${e.ends_at>from+86400?'次日 ':''}${eventClock(e.ends_at)}</p><a href="#event/${esc(e.id)}">${esc(e.title)}</a><p>${esc(e.location)}</p><span class="muted">${eventTimeLabel(e)}</span>${interestButton(e)}${interestFeedbackSlot(e)}</article>`).join(''):'<p class="muted">当天暂无活动</p>'}</section>`}).join('');
-  return `<section class="event-calendar" aria-labelledby="calendar-title"><div class="section-head"><div><span class="eyebrow">MAKE TIME TO MEET</span><h2 id="calendar-title">活动日历</h2><p>景德镇时间（UTC+8）· 按开始时间排列</p></div><div class="calendar-modes" aria-label="日历显示范围">${[1,3,7].map(n=>`<button type="button" class="filter ${calendarDays===n?'selected':''}" data-action="calendar-view" data-days="${n}" aria-pressed="${calendarDays===n}">${{1:'一天',3:'三天',7:'一周'}[n]}</button>`).join('')}</div></div><div class="calendar-toolbar"><button class="btn light" data-action="calendar-prev" aria-label="上一段日期">← 前${calendarDays}天</button><label>查看日期 <input id="calendar-date" type="date" min="1970-01-01" max="2099-12-31" value="${calendarDate}"></label><button class="btn light" data-action="calendar-today">今天</button><button class="btn light" data-action="calendar-next" aria-label="下一段日期">后${calendarDays}天 →</button></div><div class="calendar-grid" data-days="${calendarDays}" style="--calendar-columns:${calendarDays}">${days}</div></section>`;
-}
+function calendarSection(events){return dashboardCalendar(events)}
 document.addEventListener('change',event=>{
   if(event.target.id==='calendar-date'&&event.target.checkValidity()&&/^\d{4}-\d{2}-\d{2}$/.test(event.target.value)){calendarDate=event.target.value;render()}
   if(event.target.id==='poster-qr')renderEventPoster();
 });
 async function handleEventTools(button){
   const action=button.dataset.action,id=button.dataset.id;
+  if(await handleDashboardAction(button))return true;
   if(action.startsWith('calendar-')){
     if(action==='calendar-view'&&[1,3,7].includes(Number(button.dataset.days)))calendarDays=Number(button.dataset.days);
     else if(action==='calendar-prev')calendarDate=shiftDay(calendarDate,-calendarDays);
@@ -192,4 +189,4 @@ async function renderEventPoster(){
   }
 }
 // Refresh deadline labels while the page is open, without replacing an active dialog or form.
-setInterval(()=>{if(state.route==='events'&&!$('#modal').open&&!document.activeElement?.matches('input,textarea,select'))render()},30000);
+setInterval(()=>{if(state.route==='events'&&!$('#modal').open&&!document.activeElement?.matches('input,textarea,select')&&!document.activeElement?.closest('#campus-map')&&!document.querySelector('#campus-viewport.is-dragging'))render()},30000);

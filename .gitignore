@@ -23,3 +23,13 @@ releases/
 *.tar.gz
 *.zip
 output/
+firmware/target-check/build/
+firmware/target-check/sdkconfig
+firmware/target-check/sdkconfig.old
+
+# Firmware development configuration and Python caches
+firmware/sdkconfig
+firmware/sdkconfig.old
+firmware/build/
+firmware/**/__pycache__/
+firmware/portable/.venv/

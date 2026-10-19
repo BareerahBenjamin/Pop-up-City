@@ -1,3 +1,4 @@
+import {memberVisual,visualForReceipt} from './avatar-visual.mjs';
 import {randomUUID,randomBytes,randomInt,timingSafeEqual} from 'node:crypto';
 import {sign,equal} from './checkin-session.mjs';
 export const FRIEND_MIN_RSSI=-60;
@@ -16,8 +17,8 @@ export class FriendSessions {
  }
  remove(s){for(const id of [s.device_a_id,s.device_b_id])if(this.byBoard.get(id)===s){this.byBoard.delete(id);this.reports.delete(id);}}
  near(a,b){const t=this.clock(),ab=this.reports.get(a)?.get(b),ba=this.reports.get(b)?.get(a);return Boolean(ab&&ba&&t-ab.time<5&&t-ba.time<5);}
- view(s){const{a_proof,b_proof,...rest}=s;return {...rest,proximity_ready:this.near(s.device_a_id,s.device_b_id)};}
- response(board){const s=this.byBoard.get(board.id);return this.wrap(board,s?this.view(s):{state:this.waiters.has(board.id)?'searching':'idle'});}
+ view(s,board){const{a_proof,b_proof,visual_a,visual_b,...rest}=s;const visual=visualForReceipt(s.receipt,board.id)||{version:1,template:'pixel-friend-v1',self:board.id===s.device_a_id?visual_a:visual_b,peer:board.id===s.device_a_id?visual_b:visual_a};return {...rest,visual,proximity_ready:this.near(s.device_a_id,s.device_b_id)};}
+ response(board){const s=this.byBoard.get(board.id);return this.wrap(board,s?this.view(s,board):{state:this.waiters.has(board.id)?'searching':'idle'});}
  match(){
   const queue=[...this.waiters.values()].sort((a,b)=>a.order-b.order);
   for(let i=0;i<queue.length;i++){
@@ -27,6 +28,7 @@ export class FriendSessions {
     const boards=[a.board,b.board].sort((x,y)=>x.id.localeCompare(y.id)),ids=boards.map(x=>x.id);
     const s={state:'waiting',interaction_id:randomUUID(),device_a_id:ids[0],device_b_id:ids[1],
      device_a_label:boards[0].nickname||'USER',device_b_label:boards[1].nickname||'USER',
+     visual_a:memberVisual(boards[0].member_id,boards[0].avatar_json),visual_b:memberVisual(boards[1].member_id,boards[1].avatar_json),
      nonce:randomBytes(16).toString('hex'),confirmation_code:String(randomInt(1000,10000)),occurred_at:this.clock(),a_confirmed:false,b_confirmed:false};
     this.sessions.set(s.interaction_id,s);
     for(const id of ids){this.waiters.delete(id);this.byBoard.set(id,s);}break;
@@ -83,7 +85,7 @@ export class FriendSessions {
   if(s.a_confirmed&&s.b_confirmed){
    s.state='submitting';
    try{const receipt=await this.submit(board,{interaction_id:s.interaction_id,device_a_id:s.device_a_id,device_b_id:s.device_b_id,
-     nonce:s.nonce,confirmation_code:s.confirmation_code,occurred_at:s.occurred_at,a_confirmed:true,b_confirmed:true,a_proof:s.a_proof,b_proof:s.b_proof});
+     nonce:s.nonce,confirmation_code:s.confirmation_code,occurred_at:s.occurred_at,a_confirmed:true,b_confirmed:true,a_proof:s.a_proof,b_proof:s.b_proof},{a:s.visual_a,b:s.visual_b});
     if(receipt?.interaction_id!==s.interaction_id||receipt.status!=='connected'||typeof receipt.duplicate!=='boolean')throw Error('BAD_RECEIPT');s.receipt=receipt;s.state='done';
     this.reports.delete(s.device_a_id);this.reports.delete(s.device_b_id);
    }catch{s.state='failed';}
