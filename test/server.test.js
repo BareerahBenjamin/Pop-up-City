@@ -244,6 +244,11 @@ test('member import, event review, concurrent capacity, edit, task, device check
   assert.equal((await f.call(`/api/events/${id}/attendees`, { method: 'POST', cookie: alice })).status, 409);
   await f.call(`/api/admin/events/${id}`, { method: 'PATCH', cookie: admin, body: { status: 'published', official: true } });
   assert.equal((await f.call('/api/events')).data.events.length, 1);
+  // Capacity is tested with eligible (bound) participants under the new registration rule.
+  for (const cookie of [alice, bob]) {
+    const memberId = (await f.call('/api/me', { cookie })).data.member.id;
+    assert.equal((await f.call(`/api/admin/members/${memberId}/devices`, { method: 'POST', cookie: admin })).status, 201);
+  }
   const registrations = await Promise.all([alice, bob].map(cookie => f.call(`/api/events/${id}/attendees`, { method: 'POST', cookie })));
   assert.deepEqual(registrations.map(r => r.status).sort(), [200, 409]);
   // 清理本测试的报名，再验证指定设备对应成员。
@@ -353,7 +358,8 @@ test('covers reject invalid, oversized, animated and excessive-pixel images with
   assert.equal(huge.status, 413);
   assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM events').get().n, 1);
   f.db.raw.exec("CREATE TRIGGER fail_cover BEFORE INSERT ON event_covers BEGIN SELECT RAISE(ABORT, 'test failure'); END");
-  const failed = await f.call('/api/events', { method: 'POST', cookie, body: { ...coverEvent(), cover: dataImage(valid) } });
+  const nextSlot = { ...coverEvent(), starts_at: created.data.event.ends_at, ends_at: created.data.event.ends_at + 3600 };
+  const failed = await f.call('/api/events', { method: 'POST', cookie, body: { ...nextSlot, cover: dataImage(valid) } });
   assert.equal(failed.status, 500);assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM events').get().n, 1);
 });
 
@@ -453,7 +459,7 @@ test('role migration retains users and sessions, upgrades only first enabled adm
 test('admin bulk events validate all rows, commit atomically, and retry without duplicates', async t => {
   const f=await fixture(t);f.seed('bulk-admin@example.test','admin');f.seed('bulk-member@example.test');
   const admin=await f.login('bulk-admin@example.test'),member=await f.login('bulk-member@example.test');
-  const make=title=>({title,description:'批量导入说明',category:'学习',location:'共创空间',starts_at:stamp()+86400,ends_at:stamp()+90000,capacity:12,volunteer_capacity:2,official:true});
+  const make=title=>{const offset=title==='批量二'?3600:title==='待审核批量'?7200:0;return{title,description:'批量导入说明',category:'学习',location:'共创空间',starts_at:stamp()+86400+offset,ends_at:stamp()+90000+offset,capacity:12,volunteer_capacity:2,official:true}};
   const input={request_id:randomUUID(),status:'published',events:[make('批量一'),make('批量二')]};
   const post=(body,cookie=admin)=>f.call('/api/admin/events/import',{method:'POST',body,cookie});
   assert.equal((await post(input,member)).status,403);
@@ -487,8 +493,8 @@ test('admin event deletion is authorized, title-confirmed, idempotent and preser
   const admin=await f.login('delete-admin@example.com'),cookie=await f.login('delete-member@example.com');
   const draft={title:'删除功能验证',description:'保留参与事实',category:'学习',location:'E栋2层',starts_at:stamp()+1800,ends_at:stamp()+5400,capacity:12};
   const created=await f.call('/api/events',{method:'POST',cookie:admin,body:draft}),id=created.data.event.id;
-  await f.call(`/api/events/${id}/attendees`,{method:'POST',cookie});await f.call(`/api/events/${id}/interest`,{method:'POST',cookie});
   const device=(await f.call(`/api/admin/members/${member}/devices`,{method:'POST',cookie:admin})).data;
+  assert.equal((await f.call(`/api/events/${id}/attendees`,{method:'POST',cookie})).status,200);await f.call(`/api/events/${id}/interest`,{method:'POST',cookie});
   f.db.raw.prepare('INSERT INTO checkins VALUES(?,?,?,?,?)').run(id,member,device.device_id,stamp(),'preserved-checkin');
   const remove=(who=admin,body={confirm_title:draft.title},extra={})=>f.call(`/api/admin/events/${id}`,{method:'DELETE',cookie:who,body,...extra});
   assert.equal((await remove(cookie)).status,403);assert.equal((await remove(null)).status,403);

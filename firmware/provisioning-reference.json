@@ -1,0 +1,121 @@
+{
+  "source": "existing folotoy_herstory/folotoy reference snapshot (not a Git checkout)",
+  "license": "licenses/FoloToy-MIT.txt",
+  "adaptations": [
+    "Wi-Fi storage through popcity event_storage",
+    "five saved profiles and bounded candidate list",
+    "no legacy LAN discovery",
+    "inline onboarding guidance without key-based bypass",
+    "Remove obsolete UDP discovery implementation rather than substitute authentication stubs"
+  ],
+  "files": [
+    {
+      "file": "firmware/main/network_setup.c",
+      "reference_source": "/Users/yeyutong/project/folotoy_herstory/folotoy/firmware/checkin/planet-preview/main/network_setup.c",
+      "reference_sha256": "1a9179908102961d7912baa7c183ea1b1a25f4ea53ef4d13ce07403a78b95aba",
+      "modified": true
+    },
+    {
+      "file": "firmware/main/network_setup.h",
+      "reference_source": "/Users/yeyutong/project/folotoy_herstory/folotoy/firmware/checkin/planet-preview/main/network_setup.h",
+      "reference_sha256": "5f8d66e3ad8272f97f5835d3d8393eaae29eb89b504d71f0cdbdc403b881ae0b",
+      "modified": false
+    },
+    {
+      "file": "firmware/main/network_profiles.c",
+      "reference_source": "/Users/yeyutong/project/folotoy_herstory/folotoy/firmware/checkin/planet-preview/main/network_profiles.c",
+      "reference_sha256": "5c80156af0f713512159c042da3ab5e097737208727faee9b3f80265ed2fc74b",
+      "modified": false
+    },
+    {
+      "file": "firmware/main/network_profiles.h",
+      "reference_source": "/Users/yeyutong/project/folotoy_herstory/folotoy/firmware/checkin/planet-preview/main/network_profiles.h",
+      "reference_sha256": "efe319459ed73bc5e4bcc3602cfd37754a457d454a1cafc0e226d988f26f268e",
+      "modified": true
+    },
+    {
+      "file": "firmware/main/network_scan_model.c",
+      "reference_source": "/Users/yeyutong/project/folotoy_herstory/folotoy/firmware/checkin/planet-preview/main/network_scan_model.c",
+      "reference_sha256": "2e1aa96baf42e354e039cef42b4bda76582cd2fd50dd4bea52aecd9ff08e6761",
+      "modified": false
+    },
+    {
+      "file": "firmware/main/network_scan_model.h",
+      "reference_source": "/Users/yeyutong/project/folotoy_herstory/folotoy/firmware/checkin/planet-preview/main/network_scan_model.h",
+      "reference_sha256": "c236992c08e8999bd12cb5dfceb71f94bb7288fa25a28a2cf888743dd00d04f7",
+      "modified": false
+    },
+    {
+      "file": "firmware/main/network_radio_scan.c",
+      "reference_source": "/Users/yeyutong/project/folotoy_herstory/folotoy/firmware/checkin/planet-preview/main/network_radio_scan.c",
+      "reference_sha256": "4721a82bfe3d45a7a3f09161061600e8f022ec45cd77aae42f087ca85502bf7f",
+      "modified": false
+    },
+    {
+      "file": "firmware/main/network_radio_scan.h",
+      "reference_source": "/Users/yeyutong/project/folotoy_herstory/folotoy/firmware/checkin/planet-preview/main/network_radio_scan.h",
+      "reference_sha256": "51bf4453be171721a3f47920ac65073dd8090d02b918b742c6e654c3393b9fda",
+      "modified": false
+    },
+    {
+      "file": "firmware/main/network_blufi.c",
+      "reference_source": "/Users/yeyutong/project/folotoy_herstory/folotoy/firmware/checkin/planet-preview/main/network_blufi.c",
+      "reference_sha256": "5bf21950c247585df6e6c45085ff0ff7ecd08d2a0b8f4ac42b8951dd267a5a7c",
+      "modified": false
+    },
+    {
+      "file": "firmware/main/network_blufi.h",
+      "reference_source": "/Users/yeyutong/project/folotoy_herstory/folotoy/firmware/checkin/planet-preview/main/network_blufi.h",
+      "reference_sha256": "adc64026586916a67be1d4801fad73dc47a7357f5496f4d12e0ec045df8ab625",
+      "modified": false
+    },
+    {
+      "file": "firmware/main/blufi_input.c",
+      "reference_source": "/Users/yeyutong/project/folotoy_herstory/folotoy/firmware/checkin/planet-preview/main/blufi_input.c",
+      "reference_sha256": "f4abc113929a503d2523865ea14b8eabb96967f2b9a5354766bb2ce234174c76",
+      "modified": false
+    },
+    {
+      "file": "firmware/main/blufi_input.h",
+      "reference_source": "/Users/yeyutong/project/folotoy_herstory/folotoy/firmware/checkin/planet-preview/main/blufi_input.h",
+      "reference_sha256": "d7f7a9ee5f77cc1bd6f9f8b34e1018d69ec6f60313432a40cbeb05422acfce93",
+      "modified": false
+    },
+    {
+      "file": "firmware/main/blufi_security.c",
+      "reference_source": "/Users/yeyutong/project/folotoy_herstory/folotoy/firmware/checkin/planet-preview/main/blufi_security.c",
+      "reference_sha256": "fcfd1504ef5917ca5719cbed5179233d0e9b5887b2fcdc6401c20babecf3e465",
+      "modified": false
+    },
+    {
+      "file": "firmware/main/blufi_security.h",
+      "reference_source": "/Users/yeyutong/project/folotoy_herstory/folotoy/firmware/checkin/planet-preview/main/blufi_security.h",
+      "reference_sha256": "4cdf9bcf3f530563acbe3e8a3fdd9b437259dff9b68047f0dd3ce5cd4e4303c4",
+      "modified": false
+    },
+    {
+      "file": "firmware/main/nearby_ble.c",
+      "reference_source": "/Users/yeyutong/project/folotoy_herstory/folotoy/firmware/checkin/planet-preview/main/nearby_ble.c",
+      "reference_sha256": "d069f18eb81dc274f40bfb757f98da50c698108c45eca43b181f2163701f3378",
+      "modified": false
+    },
+    {
+      "file": "firmware/main/nearby_ble.h",
+      "reference_source": "/Users/yeyutong/project/folotoy_herstory/folotoy/firmware/checkin/planet-preview/main/nearby_ble.h",
+      "reference_sha256": "e24a7569531be9e5cc86123e7b23388e867eee8868279ba9dad3e5cb27ec6031",
+      "modified": false
+    },
+    {
+      "file": "firmware/main/nearby_participants.c",
+      "reference_source": "/Users/yeyutong/project/folotoy_herstory/folotoy/firmware/checkin/planet-preview/main/nearby_participants.c",
+      "reference_sha256": "05bbe486e689daccec9622b517ed72b80e63c340cb8aa86edb59e7c48e82a1c8",
+      "modified": false
+    },
+    {
+      "file": "firmware/main/nearby_participants.h",
+      "reference_source": "/Users/yeyutong/project/folotoy_herstory/folotoy/firmware/checkin/planet-preview/main/nearby_participants.h",
+      "reference_sha256": "9fb882e76b82bcf2fa07ec6084e201d0257794a9ee5d1a75eaa1d24f747beb01",
+      "modified": false
+    }
+  ]
+}

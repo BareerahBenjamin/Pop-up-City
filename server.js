@@ -1,3 +1,4 @@
+import { runPendingBatches } from './hardware-cloud/host-batches.mjs';
 import { createServer } from 'node:http';
 import { readFile, realpath, stat } from 'node:fs/promises';
 import { resolve, sep, extname } from 'node:path';
@@ -99,6 +100,20 @@ export function createApplication(config, { db, mailer, staticRoot = publicDirec
       else res.destroy();
     }
   });
+  // Durable jobs are resumed at startup; one member transaction per batch per tick.
+  // Stop with this server; never retain a timer after its database is closed.
+  let batchTimer;
+  const batchTick = () => {
+    if (!server.listening) return;
+    try { runPendingBatches(db); }
+    catch { console.error('批量签到后台处理暂不可用，将重试未提交项'); }
+  };
+  server.once('listening', () => {
+    batchTimer = setInterval(batchTick, 200);
+    batchTimer.unref();
+    batchTick();
+  });
+  server.once('close', () => clearInterval(batchTimer));
   server.requestTimeout = 15000;
   server.headersTimeout = 10000;
   server.keepAliveTimeout = 5000;

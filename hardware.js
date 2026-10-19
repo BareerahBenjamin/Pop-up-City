@@ -1,3 +1,4 @@
+import { memberVisual } from './hardware-cloud/avatar-visual.mjs';
 import { derivePixelPlanet, configurePlanetEvent } from './planet-growth.js';
 import { createHash, createHmac, timingSafeEqual, randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
@@ -87,7 +88,7 @@ export function checkin(db, reporter, data) {
     return receipt;
   });
 }
-export function friend(db, reporter, data) {
+export function friend(db, reporter, data, trustedVisual = null) {
   common(data);
   const a = device(db, data.device_a_id, 'user'), b = device(db, data.device_b_id, 'user');
   if (a.id >= b.id || a.member_id === b.member_id) fail(400, 'INVALID_PAIR', '设备 ID 必须排序且属于不同用户');
@@ -107,7 +108,9 @@ export function friend(db, reporter, data) {
     }
     const revisions = [ma, mb].map(member => ({ user_id: member, revision: planetSnapshotInTransaction(db, member).revision }));
     const receipt = { receipt_id: randomUUID(), interaction_id: data.interaction_id, status: 'connected', friendship_id: relationship.id,
-      established_at: relationship.established_at, duplicate, planets: revisions };
+      established_at: relationship.established_at, duplicate, planets: revisions, device_a_id:a.id,device_b_id:b.id,
+      visual_a:trustedVisual?.a?.member_id===a.member_id?trustedVisual.a:memberVisual(a.member_id,db.raw.prepare('SELECT avatar_json FROM members WHERE id=?').get(a.member_id)?.avatar_json),
+      visual_b:trustedVisual?.b?.member_id===b.member_id?trustedVisual.b:memberVisual(b.member_id,db.raw.prepare('SELECT avatar_json FROM members WHERE id=?').get(b.member_id)?.avatar_json) };
     saveInteraction(db, data, 'friend', reporter, a, b, null, payload, receipt);
     return receipt;
   });
