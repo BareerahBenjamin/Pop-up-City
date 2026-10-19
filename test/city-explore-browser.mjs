@@ -13,8 +13,8 @@ const member=randomUUID(),token=randomBytes(32).toString('hex');
 db.raw.prepare("INSERT INTO members(id,email,nickname,role,status,created_at,updated_at) VALUES(?,?,?,'member','active',?,?)").run(member,'calendar@example.test','月历测试邻居',now,now);
 db.raw.prepare('INSERT INTO sessions VALUES(?,?,?,?)').run(createHash('sha256').update(token).digest('hex'),member,now+86400,now);
 const base=Date.parse('2026-10-20T00:00:00+08:00')/1000;
-function event(title,location,start,end,status='published',category='共创'){
-  const id=randomUUID();db.raw.prepare('INSERT INTO events(id,title,description,category,location,starts_at,ends_at,capacity,volunteer_capacity,host_id,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,20,2,?,?,?,?)').run(id,title,'本地浏览器验证示例，不会写入现有数据库。',category,location,start,end,member,status,now,now);return id;
+function event(title,location,start,end,status='published',category='共创',host=member){
+  const id=randomUUID();db.raw.prepare('INSERT INTO events(id,title,description,category,location,starts_at,ends_at,capacity,volunteer_capacity,host_id,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,20,2,?,?,?,?)').run(id,title,'本地浏览器验证示例，不会写入现有数据库。',category,location,start,end,host,status,now,now);return id;
 }
 const first=event('月历课程体验','E栋2层 · 课程教室',base+10*3600,base+11*3600,'published','学习');
 for(let i=1;i<5;i++)event(`共同创造第${i}场`,i%2?'C栋2层 · 公共活动区':'E栋2层 · 课程教室',base+(10+i)*3600,base+(11+i)*3600,'published',i%2?'科技':'共创');
@@ -88,8 +88,10 @@ try{
   const guest=await browser.newContext({viewport:{width:375,height:850}}),guestPage=await guest.newPage();
   await guestPage.goto(origin+'/#events');await guestPage.locator('#calendar-month').fill('2026-10');await guestPage.locator('.month-date[data-date="2026-10-20"]').click();await guestPage.locator(`.month-day-list .interest-button[data-id="${first}"]`).click();await guestPage.locator('#login-request-form').waitFor();
   // A long-running event must never displace near-term cards, and past events stay collapsed.
-  const ongoingLong=event('持续开放的共创计划','街角咖啡',now-10*86400,now+10*86400);
-  const futureLong=event('未来长期计划','街角咖啡',now+12*86400,now+20*86400);
+  // A different host keeps these overlapping calendar fixtures valid under host scheduling rules.
+  const longHost=randomUUID();db.raw.prepare("INSERT INTO members(id,email,nickname,status,created_at,updated_at) VALUES(?,?,?,'active',?,?)").run(longHost,'long-host@example.test','长期活动发起人',now,now);
+  const ongoingLong=event('持续开放的共创计划','街角咖啡',now-10*86400,now+10*86400,'published','共创',longHost);
+  const futureLong=event('未来长期计划','街角咖啡',now+12*86400,now+20*86400,'published','共创',longHost);
   const pastEvent=event('上个月的相遇','街角咖啡',now-30*86400,now-29*86400);
   await page.goto(origin+'/#events');await page.reload();await page.locator('[data-event-group=longterm]').waitFor();
   assert.equal(await page.locator(`.month-events a[href="#event/${ongoingLong}"],.month-day-list a[href="#event/${ongoingLong}"]`).count(),0);
