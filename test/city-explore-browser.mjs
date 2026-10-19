@@ -92,6 +92,16 @@ try{
   const futureLong=event('未来长期计划','街角咖啡',now+12*86400,now+20*86400);
   const pastEvent=event('上个月的相遇','街角咖啡',now-30*86400,now-29*86400);
   await page.goto(origin+'/#events');await page.reload();await page.locator('[data-event-group=longterm]').waitFor();
+  assert.equal(await page.locator(`.month-events a[href="#event/${ongoingLong}"],.month-day-list a[href="#event/${ongoingLong}"]`).count(),0);
+  assert.equal(await page.locator('.calendar-longterm').evaluate(e=>e.open),false);
+  assert.equal(await page.locator(`.calendar-longterm a[href="#event/${ongoingLong}"]`).count(),1);
+  assert.equal(await page.locator('.month-day-agenda').evaluate(e=>Boolean(e.compareDocumentPosition(document.querySelector('.month-scroll'))&Node.DOCUMENT_POSITION_FOLLOWING)),true);
+  for(const days of [1,3,7]){
+    await page.locator(`[data-action="calendar-view"][data-days="${days}"]`).click();
+    assert.equal(await page.locator(`.calendar-event a[href="#event/${ongoingLong}"]`).count(),0);
+    assert.equal(await page.locator(`.calendar-longterm a[href="#event/${ongoingLong}"]`).count(),1);
+  }
+  await page.locator('[data-action=month-view]').click();
   const groups=await page.locator('.discovery-gallery [data-event-group]').evaluateAll(nodes=>nodes.map(n=>n.dataset.eventGroup));
   assert.deepEqual(groups,['nearby','longterm','drafts','past']);
   assert.equal(await page.locator(`[data-event-group=nearby] a[href="#event/${ongoingLong}"]`).count(),0);
@@ -139,6 +149,18 @@ try{
   await page.locator('#event-form button.btn.wide').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);
   assert.equal(db.raw.prepare('SELECT official FROM events WHERE id=?').get(first).official,0);
   console.log('PASSED: removed activity jump bar; chronological activity cards; official/resident radio selection and persisted edits.');
+  // Administrators can reach pending reviews directly, approve and see persisted status.
+  await page.setViewportSize({width:1280,height:900});await page.goto(origin+'/#events');await page.evaluate(()=>document.fonts.ready);await page.bringToFront();await page.locator('[data-action=review-events]').focus();await page.keyboard.press('Enter');
+  await page.locator('.admin-events').waitFor();
+  assert.equal(await page.locator('.admin-tabs button').first().getAttribute('data-tab'),'events');
+  assert.equal(await page.locator('.admin-event').count(),1);
+  const review=page.locator('.admin-event').filter({hasText:'待审核活动'});
+  const reviewId=await review.getAttribute('data-event-id');
+  await review.locator('[data-action=set-event-status][data-status=published]').click();
+  await page.getByText('暂无待审核活动。',{exact:true}).waitFor();
+  assert.equal(db.raw.prepare('SELECT status FROM events WHERE id=?').get(reviewId).status,'published');
+  await page.locator('[data-action=admin-event-scope][data-scope=all]').click();
+  console.log('PASSED: visible administrator review entry, pending-only queue, approval persistence, daily calendar priority and compact long-term calendar lists.');
   // The same isolated member now reviews the real administrator deletion flow.
   db.raw.prepare("UPDATE members SET role='admin' WHERE id=?").run(member);
   await page.setViewportSize({width:1280,height:900});await page.reload();await page.goto(origin+'/#admin');

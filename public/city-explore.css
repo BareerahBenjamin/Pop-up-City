@@ -55,6 +55,19 @@
 .month-day-list a { display:block; font-size:1.25rem; font-weight:600; text-decoration:none; margin:8px 0; overflow-wrap:anywhere; }
 .month-day-list a:hover { text-decoration:underline; }
 .month-day-list p,.month-empty { font-size:1rem; color:var(--muted); }
+.calendar-longterm { margin:20px 0; border:1px solid var(--line); border-radius:12px; padding:0 16px; }
+.calendar-longterm summary { cursor:pointer; min-height:48px; padding:14px 0; font-weight:600; }
+.calendar-longterm summary span { font-size:1rem; color:var(--muted); font-weight:400; margin-left:8px; }
+.calendar-longterm > p { color:var(--muted); font-size:1rem; margin-bottom:12px; }
+.calendar-longterm ul { list-style:none; margin:0; padding:0; }
+.calendar-longterm li { border-top:1px solid var(--line); padding:12px 0; overflow-wrap:anywhere; }
+.calendar-longterm li a { display:block; font-size:1.125rem; font-weight:600; }
+.calendar-longterm li span { display:block; color:var(--muted); font-size:.9375rem; font-variant-numeric:tabular-nums; }
+.calendar-longterm summary:focus-visible { outline:3px solid var(--pink); outline-offset:3px; }
+.activity-review-notice { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; padding:16px; border:1px solid var(--line); border-radius:12px; margin:0 0 24px; }
+.activity-review-notice strong { font-size:1.125rem; }
+.activity-review-notice p { font-size:1rem; color:var(--muted); }
+.admin-event-filters { display:flex; flex-wrap:wrap; gap:8px; margin:20px 0; }
 .campus-heading { display:flex; align-items:center; justify-content:space-between; gap:20px; margin-bottom:20px; flex-wrap:wrap; }
 .campus-heading h2 { font-size:1.75rem; margin:8px 0; }
 .campus-heading p { font-size:1rem; color:var(--muted); margin:0; }
