@@ -1,0 +1,11 @@
+{
+  "contract_version": "herstory-event-v1",
+  "flash_size_bytes": 8388608,
+  "factory_offset": "0x10000",
+  "factory_size": "0x680000",
+  "event_save_offset": "0x690000",
+  "event_save_size": "0x170000",
+  "event_save_format": "nvs",
+  "default_save_quota_bytes": 2048,
+  "partition_csv_sha256": "5036f083d1a2fd9006a1d5c534ac82a54423fd62db563cce3a66c76b5788598b"
+}

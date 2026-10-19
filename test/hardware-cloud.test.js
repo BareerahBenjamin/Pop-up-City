@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openDatabase, migrate } from '../database.js';
 import api from '../api.js';
+import {friend as submitFriend} from '../hardware.js';
 import { createApplication } from '../server.js';
 const sha = value => createHash('sha256').update(value).digest('hex');
 const sign = (token, fields) => createHmac('sha256', createHash('sha256').update(token).digest()).update(JSON.stringify(fields)).digest('hex');
@@ -190,4 +191,75 @@ test('local event deletion remains effective across remote cloud station and hos
  await f.call(`/api/admin/events/${hosted}`,f.admin,{confirm_title:'测试活动'},'DELETE');
  assert.equal(unwrap(await f.call('/local/host/state',f.bc),f.bc).activities.length,0);
  assert.equal((await f.call('/api/admin/hardware/configure',f.admin,{device_id:f.bc.id,host_activity_id:hosted,enabled:true},'PUT')).status,403);
+});
+
+test('closed single operation is retired durably and rejects a late submit after reopening',async t=>{
+ const f=fixture(t,true),activity=f.event(),host=f.bc,peer=f.ba,id=randomUUID();
+ f.db.raw.prepare('UPDATE events SET host_id=?,starts_at=? WHERE id=?').run(f.c.id,f.stamp-1,activity);
+ const cancellation={interaction_id:id,activity_id:activity,user_device_id:peer.id,host_proof:sign(host.token,['herstory-host-cancel-v1',id,host.id,peer.id,activity])};
+ assert.equal((await f.call('/local/host/cancel',host,cancellation)).status,409);
+ f.db.raw.prepare("UPDATE events SET status='cancelled' WHERE id=?").run(activity);
+ assert.equal((await f.call('/local/host/cancel',f.bb,cancellation)).status,403);
+ assert.equal(unwrap(await f.call('/local/host/cancel',host,cancellation),host).state,'cancelled');
+ f.reopen();
+ assert.equal(unwrap(await f.call('/local/host/cancel',host,cancellation),host).state,'cancelled');
+ assert.equal(unwrap(await f.call('/api/device/operations/'+id,host),host).state,'cancelled');
+ f.db.raw.prepare("UPDATE events SET status='published' WHERE id=?").run(activity);
+ const late={interaction_id:id,host_device_id:host.id,user_device_id:peer.id,activity_id:activity,presence_epoch:f.stamp,presence_tag:sign(peer.token,['herstory-presence-v1',peer.id,f.stamp]).slice(0,12),occurred_at:f.stamp,host_confirmed:true};
+ late.host_proof=sign(host.token,['herstory-host-checkin-v1',id,host.id,peer.id,activity,late.presence_epoch,late.presence_tag,late.occurred_at,true]);
+ assert.equal((await f.call('/local/host/submit',host,late)).status,409);
+ assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM checkins').get().n,0);
+ assert.equal(unwrap(await f.call('/local/host/result',peer),peer).state,'idle');
+});
+
+test('friend retirement is durable, rejects late proof replay, and cannot erase saved success',async t=>{
+ const f=fixture(t,true), intent=f.friendship(), peer=f.bb;
+ const retired={interaction_id:intent.interaction_id,peer_device_id:peer.id,nonce:intent.nonce,confirmation_code:intent.confirmation_code,occurred_at:intent.occurred_at};
+ retired.user_proof=sign(f.ba.token,['herstory-friend-retire-v1',retired.interaction_id,f.ba.id,peer.id,retired.nonce,retired.confirmation_code,retired.occurred_at]);
+ assert.equal((await f.call('/local/friend/retire',f.ba,{...retired,user_proof:'0'.repeat(64)})).status,403);
+ assert.equal(unwrap(await f.call('/local/friend/retire',f.ba,retired),f.ba).state,'cancelled');
+ const orphan=f.friendship(),orphanStop={interaction_id:orphan.interaction_id,peer_device_id:f.bb.id,nonce:orphan.nonce,confirmation_code:orphan.confirmation_code,occurred_at:orphan.occurred_at};
+ orphanStop.user_proof=sign(f.ba.token,['herstory-friend-retire-v1',orphanStop.interaction_id,f.ba.id,f.bb.id,orphanStop.nonce,orphanStop.confirmation_code,orphanStop.occurred_at]);
+ f.db.raw.prepare('UPDATE devices SET revoked_at=? WHERE id=?').run(f.stamp,f.bb.id);f.db.raw.prepare("UPDATE members SET status='disabled' WHERE id=?").run(f.b.id);
+ assert.equal(unwrap(await f.call('/local/friend/retire',f.ba,orphanStop),f.ba).state,'cancelled');
+ f.db.raw.prepare('UPDATE devices SET revoked_at=NULL WHERE id=?').run(f.bb.id);f.db.raw.prepare("UPDATE members SET status='active' WHERE id=?").run(f.b.id);
+ f.reopen();
+ assert.equal(unwrap(await f.call('/api/device/operations/'+intent.interaction_id,peer),peer).state,'cancelled');
+ assert.throws(()=>submitFriend(f.db,{id:f.ba.id},intent),error=>{assert.equal(error.code,'EVENT_ID_CONFLICT');return true;});
+ assert.equal((await f.call('/api/device/friend-events',f.ba,intent)).status,409);
+ assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM friendships').get().n,0);
+ assert.equal(unwrap(await f.call('/local/friend/retire',f.ba,retired),f.ba).state,'cancelled');
+ const saved=f.friendship();
+ assert.equal((await f.call('/api/device/friend-events',f.ba,saved)).status,200);
+ const savedPeer=f.bb;
+ const stop={interaction_id:saved.interaction_id,peer_device_id:savedPeer.id,nonce:saved.nonce,confirmation_code:saved.confirmation_code,occurred_at:saved.occurred_at};
+ stop.user_proof=sign(f.ba.token,['herstory-friend-retire-v1',stop.interaction_id,f.ba.id,savedPeer.id,stop.nonce,stop.confirmation_code,stop.occurred_at]);
+ const result=unwrap(await f.call('/local/friend/retire',f.ba,stop),f.ba);assert.equal(result.state,'saved');assert.equal(result.receipt.status,'connected');
+ assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM friendships').get().n,1);
+});
+
+test('Chinese host title and roster strips fit bounded signed device responses',async t=>{
+ const f=fixture(t),activity=f.event();
+ f.db.raw.prepare('UPDATE events SET host_id=?,starts_at=?,ends_at=? WHERE id=?').run(f.c.id,f.stamp-1,f.stamp+300,activity);
+ const longName='王'.repeat(32);f.db.raw.prepare('UPDATE members SET nickname=? WHERE id=?').run(longName,f.c.id);f.db.raw.prepare('UPDATE events SET title=? WHERE id=?').run(longName,activity);
+ for(let i=0;i<5;i++){const id=randomUUID();f.db.raw.prepare("INSERT INTO members(id,email,nickname,status,created_at,updated_at) VALUES(?,?,?,'active',?,?)").run(id,id+'@example.test',longName,f.stamp,f.stamp);f.db.raw.prepare("INSERT INTO event_registrations VALUES(?,?,'attendee',?)").run(activity,id,f.stamp+i+1);}
+ const runtime=await f.call('/api/device/runtime?view=board',f.bc),facts=unwrap(runtime,f.bc);
+ assert.match(facts.host.active_title_bitmap,/^[a-f0-9]{1536}$/);assert.ok(Buffer.from(facts.host.active_title_bitmap,'hex').some(x=>x));
+ const response=await f.call('/api/device/host/roster?activity_id='+activity+'&offset=0&limit=6',f.bc),roster=unwrap(response,f.bc);
+ assert.match(roster.activity_title_bitmap,/^[a-f0-9]{1536}$/);
+ assert.equal(roster.items.length,6);assert.equal(roster.items[0].name,'测试成员');assert.match(roster.items[0].name_bitmap,/^[a-f0-9]{768}$/);assert.ok(Buffer.from(roster.items[0].name_bitmap,'hex').some(x=>x));
+ assert.ok(Buffer.byteLength(JSON.stringify(response.data))<16384);assert.ok(Buffer.byteLength(JSON.stringify(runtime.data))<16384);
+});
+test('friend visual is signed, recipient ordered and survives avatar edits, saved receipts and restarts',async t=>{
+ const f=fixture(t,true),avatar=hair=>JSON.stringify({release:'herstory-avatar-assets-v1',selection:{hst_layer_hair:hair,hst_layer_body:'hst_ast_0019',hst_layer_hoodie:'hst_ast_0052'}});
+ f.db.raw.prepare('UPDATE members SET avatar_json=? WHERE id=?').run(avatar('hst_ast_0035'),f.a.id);f.db.raw.prepare('UPDATE members SET avatar_json=? WHERE id=?').run(avatar('hst_ast_0036'),f.b.id);
+ for(const b of [f.ba,f.bb])unwrap(await f.call('/local/friend/request',b,{}),b);
+ const observation=peer=>({peer_device_id:peer.id,presence_epoch:f.stamp,presence_tag:sign(peer.token,['herstory-presence-v1',peer.id,f.stamp]).slice(0,12),rssi:-45,age_ms:0});
+ for(const [b,p] of [[f.ba,f.bb],[f.bb,f.ba]])unwrap(await f.call('/local/friend/nearby',b,{observations:[observation(p)]}),b);
+ let s=unwrap(await f.call('/local/friend/session',f.ba),f.ba);const original=s.visual;assert.equal(original.self.member_id,f.a.id);assert.equal(original.self.hair_length,'short');assert.equal(original.peer.hair_length,'long');assert.equal(original.self.fallback,false);
+ const opposite=unwrap(await f.call('/local/friend/session',f.bb),f.bb);assert.deepEqual(opposite.visual.self,original.peer);
+ f.db.raw.prepare('UPDATE members SET avatar_json=? WHERE id=?').run(avatar('hst_ast_0048'),f.a.id);f.reopen();
+ for(const b of [f.ba,f.bb]){const fields=['herstory-hardware-v1','friend',s.interaction_id,s.device_a_id,s.device_b_id,s.nonce,s.confirmation_code,s.occurred_at,true,true];s=unwrap(await f.call('/local/friend/confirm',b,{interaction_id:s.interaction_id,user_proof:sign(b.token,fields)}),b);}
+ assert.equal(s.state,'done');const recovered=unwrap(await f.call('/api/device/operations/'+s.interaction_id,f.ba),f.ba);assert.deepEqual(recovered.visual,original);assert.equal(recovered.receipt.visual_a.fallback,false);assert.equal((await f.call('/local/friend/session',f.bc)).data.payload.includes('hair_rgb'),false);
+ const stranger=unwrap(await f.call('/api/device/operations/'+s.interaction_id,f.bc),f.bc);assert.equal(stranger.state,'unknown');assert.equal(stranger.visual,undefined);
 });

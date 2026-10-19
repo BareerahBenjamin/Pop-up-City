@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { nameBitmap } from '../hardware-cloud/name-bitmap.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID, randomBytes, createHash, createHmac } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -8,6 +9,17 @@ import { openDatabase, migrate } from '../database.js';
 import api from '../api.js';
 import { createApplication } from '../server.js';
 const sha = value => createHash('sha256').update(value).digest('hex');
+test('compact English and Chinese names keep a fixed font rather than filling the bitmap',async()=>{
+ const bounds=async name=>{
+  const bits=Buffer.from(await nameBitmap(name,true),'hex');assert.equal(bits.length,384);
+  let top=24,bottom=-1,left=128,right=-1;
+  for(let y=0;y<24;y++)for(let x=0;x<128;x++)if(bits[y*16+(x>>3)]&(128>>(x&7))){top=Math.min(top,y);bottom=Math.max(bottom,y);left=Math.min(left,x);right=Math.max(right,x);}
+  assert.ok(bottom>=top);return {height:bottom-top+1,width:right-left+1};
+ };
+ const single=await bounds('A'),short=await bounds('Rae'),chinese=await bounds('海椰'),mixed=await bounds('Rae 海椰');
+ assert.ok(single.height<=14);assert.ok(short.height<=14);assert.ok(chinese.height<=14);assert.ok(mixed.height<=14);
+ assert.ok(single.width<16);assert.ok(short.width<40);
+});
 const sign = (token, fields) => createHmac('sha256', createHash('sha256').update(token).digest()).update(JSON.stringify(fields)).digest('hex');
 function fixture(t, persistent = false) {
   const directory = persistent ? mkdtempSync(join(tmpdir(), 'hardware-frame-storage-')) : null;
@@ -75,7 +87,7 @@ test('four-digit claim preserves leading zero; admin request alone never binds; 
  const base='/api/admin/members/'+f.a.id+'/device-claims';
  const request=await f.call(base,f.admin,{code:'0087'});assert.equal(request.status,200);assert.equal(request.data.state,'pending');
  assert.equal(f.db.raw.prepare('SELECT 1 FROM devices WHERE id=?').get(board.id),undefined);
- state=unwrap(await f.call('/api/device-enrollment/status',board),board);assert.equal(state.request_id,request.data.request_id);assert.equal(state.member_id,f.a.id);
+ state=unwrap(await f.call('/api/device-enrollment/status',board),board);assert.equal(state.request_id,request.data.request_id);assert.equal(state.member_id,f.a.id);assert.match(state.member_label_bitmap,/^[a-f0-9]{1536}$/);assert.ok(Buffer.from(state.member_label_bitmap,'hex').some(x=>x));
  f.reopen();
  const confirmed=unwrap(await f.call('/api/device-enrollment/confirm',board,{request_id:state.request_id,decision:'accept'}),board);assert.equal(confirmed.state,'bound');assert.equal(confirmed.member_id,f.a.id);assert.equal(confirmed.member_name,'测试成员');assert.match(confirmed.member_name_bitmap,/^[a-f0-9]{768}$/);assert.ok(Buffer.from(confirmed.member_name_bitmap,'hex').some(x=>x));
  assert.deepEqual(unwrap(await f.call('/api/device-enrollment/confirm',board,{request_id:state.request_id,decision:'accept'}),board),confirmed);

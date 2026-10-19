@@ -1,0 +1,11 @@
+menu "Pop-up City"
+config PLANET_SERVER_ORIGIN
+ string "HTTPS server origin"
+ default "https://kunyuan.site"
+config PLANET_WIFI_SSID
+ string
+ default ""
+config PLANET_WIFI_PASSWORD
+ string
+ default ""
+endmenu

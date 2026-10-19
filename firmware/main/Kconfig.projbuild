@@ -1,0 +1,15 @@
+menu "Pop-up City"
+config PLANET_SERVER_ORIGIN
+ string "HTTPS server origin"
+ default "https://herstory.net.cn"
+config PLANET_WIFI_SSID
+ string
+ default ""
+config PLANET_WIFI_PASSWORD
+ string
+ default ""
+config PLANET_NEARBY_MIN_RSSI
+ int "Nearby RSSI threshold; verify on hardware"
+ range -100 -20
+ default -65
+endmenu

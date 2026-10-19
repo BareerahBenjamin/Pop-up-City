@@ -1,3 +1,6 @@
+import { notificationRoute } from './hardware-cloud/notifications.mjs';
+import { hostBatchRoute } from './hardware-cloud/host-batches.mjs';
+import { runtimeRoute } from './hardware-cloud/runtime.mjs';
 import { enrollmentRoute, enrollmentAdminRoute } from './device-enrollment.js';
 import { cloudRoute, cloudAdminRoute } from './hardware-cloud.js';
 import { PlanetGrowthError, growthTransaction, activatePlanetGrowth, configurePlanetEvent, reviewPlanetRole, correctPlanetFact, planetGrowthAdmin } from './planet-growth.js';
@@ -33,6 +36,19 @@ const sql = (db, query, ...args) => db.prepare(query).bind(...args);
 const first = (db, query, ...args) => sql(db, query, ...args).first();
 const all = async (db, query, ...args) => (await sql(db, query, ...args).all()).results;
 const run = (db, query, ...args) => sql(db, query, ...args).run();
+// Executed by DB.batch inside BEGIN IMMEDIATE, sharing the write lock with the mutation.
+function eventSlotGuard(db, hostId, starts, ends, status, excludeId = '') {
+  return { run() {
+    if (!['pending', 'published'].includes(status)) return { meta: { changes: 0 } };
+    const conflict = db.raw.prepare(`SELECT id FROM events WHERE host_id=? AND id!=?
+      AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=events.id) AND status IN ('pending','published') AND starts_at<? AND ends_at>? LIMIT 1`).get(hostId, excludeId, ends, starts);
+    if (conflict) fail(409, '你发起的活动时间有重叠，请调整开始或结束时间');
+    return { meta: { changes: 0 } };
+  } };
+}
+function hasBoundDevice(db, memberId) {
+  return Boolean(db.raw.prepare('SELECT 1 FROM devices WHERE member_id=? AND revoked_at IS NULL LIMIT 1').get(memberId));
+}
 async function digest(value) { return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode(value))), x => x.toString(16).padStart(2, '0')).join(''); }
 async function mac(secret, value) {
   if (!secret || secret.length < 32) fail(503, '服务尚未配置密钥');
@@ -232,7 +248,7 @@ async function route(request, env) {
     if (token) await run(env.DB, 'DELETE FROM sessions WHERE token_hash=?', await digest(token));
     return json({ ok: true }, 200, { 'Set-Cookie': `popup_city_session=; Path=/; HttpOnly;${env.SECURE_COOKIES ? ' Secure;' : ''} SameSite=Lax; Max-Age=0` });
   }
-  if (method === 'GET' && p === '/api/me') { requireMember(user); return json({ member: profile(user, true), next: loginDestination(env.DB, user.id) }); }
+  if (method === 'GET' && p === '/api/me') { requireMember(user); return json({ member: { ...profile(user, true), has_bound_device: hasBoundDevice(env.DB, user.id) }, next: loginDestination(env.DB, user.id) }); }
   if (method === 'GET' && p === '/api/me/records') {
     requireMember(user);
     return json({ checkins: await all(env.DB, 'SELECT c.event_id,e.title,c.checked_at FROM checkins c JOIN events e ON e.id=c.event_id WHERE c.member_id=? ORDER BY c.checked_at DESC', user.id), connections: await connectionsFor(env.DB, user.id) });
@@ -243,21 +259,21 @@ async function route(request, env) {
     const input = await body(request);
     if (user.profile_completed_at != null) {
       if (input.finalize === true && validFinalAvatar(input.avatar) && finalProfileMatches(user, validateProfile(input)))
-        return json({ member: profile(user, true), next: loginDestination(env.DB, user.id) });
+        return json({ member: { ...profile(user, true), has_bound_device: hasBoundDevice(env.DB, user.id) }, next: loginDestination(env.DB, user.id) });
       if (input.avatar !== undefined || input.finalize !== undefined) fail(409, '头像已确认，不能修改或重新生成');
       const d = validateProfile({ nickname: user.nickname, bio: user.bio, skills: user.skills, needs: user.needs, card_public: Boolean(user.card_public), ...input });
       await run(env.DB, 'UPDATE members SET nickname=?,bio=?,skills=?,needs=?,card_public=?,updated_at=? WHERE id=?', d.nickname, d.bio, d.skills, d.needs, Number(d.cardPublic), now(), user.id);
-      return json({ member: profile(await first(env.DB, 'SELECT * FROM members WHERE id=?', user.id), true) });
+      return json({ member: { ...profile(await first(env.DB, 'SELECT * FROM members WHERE id=?', user.id), true), has_bound_device: hasBoundDevice(env.DB, user.id) } });
     }
     if (input.finalize !== true || !validFinalAvatar(input.avatar)) fail(400, '请完成头像与个人资料，并确认一次性保存');
     const d = validateProfile(input), stamp = now();
     const result = await run(env.DB, 'UPDATE members SET nickname=?,bio=?,skills=?,needs=?,avatar_json=?,card_public=?,updated_at=?,profile_completed_at=? WHERE id=? AND profile_completed_at IS NULL', d.nickname, d.bio, d.skills, d.needs, d.avatar, d.cardPublic === undefined ? user.card_public : Number(d.cardPublic), stamp, stamp, user.id);
     if (!result.meta.changes) {
       const saved = await first(env.DB, 'SELECT * FROM members WHERE id=?', user.id);
-      if (finalProfileMatches(saved, d)) return json({ member: profile(saved, true), next: loginDestination(env.DB, user.id) });
+      if (finalProfileMatches(saved, d)) return json({ member: { ...profile(saved, true), has_bound_device: hasBoundDevice(env.DB, user.id) }, next: loginDestination(env.DB, user.id) });
       fail(409, '头像已确认，不能修改或重新生成');
     }
-    return json({ member: profile(await first(env.DB, 'SELECT * FROM members WHERE id=?', user.id), true), next: loginDestination(env.DB, user.id) });
+    return json({ member: { ...profile(await first(env.DB, 'SELECT * FROM members WHERE id=?', user.id), true), has_bound_device: hasBoundDevice(env.DB, user.id) }, next: loginDestination(env.DB, user.id) });
   }
   if (method === 'GET' && p === '/api/members') {
     requireMember(user); return json({ members: (await all(env.DB, "SELECT * FROM members WHERE status='active' ORDER BY nickname LIMIT 200")).map(m => profile(m)) });
@@ -313,6 +329,14 @@ async function route(request, env) {
     try {
       const duplicate = db.prepare("SELECT 1 FROM events WHERE title=? AND starts_at=? AND location=? AND status!='cancelled' AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=events.id)");
       for (const row of rows) if (duplicate.get(row.title, row.starts, row.location)) errors.push(`第 ${row.row} 行：已有同名、同时间、同地点活动，请移除重复行`);
+      if (['pending','published'].includes(input.status)) {
+        for (let i=0;i<rows.length;i++) {
+          const row=rows[i];
+          eventSlotGuard(env.DB,user.id,row.starts,row.ends,input.status).run();
+          for (let j=0;j<i;j++) if (row.starts<rows[j].ends && row.ends>rows[j].starts)
+            errors.push(`第 ${row.row} 行：与第 ${rows[j].row} 行活动时间重叠`);
+        }
+      }
       if (errors.length) fail(409, errors.join('\n'));
       if (input.preview) { db.exec('ROLLBACK'); return json({ count: rows.length, events: rows }); }
       const stamp = now(), ids = [];
@@ -333,6 +357,7 @@ async function route(request, env) {
     if (input.official !== undefined && typeof input.official !== 'boolean') fail(400, '官方标记不合法');
     const cover = await validateCover(input.cover);
     await env.DB.batch([
+      eventSlotGuard(env.DB, user.id, d.starts, d.ends, status),
       sql(env.DB, 'INSERT INTO events(id,title,description,category,location,starts_at,ends_at,capacity,volunteer_capacity,host_id,official,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)', id, d.title, d.description, d.category, d.location, d.starts, d.ends, d.capacity, d.volunteers, user.id, user.role === 'admin' && input.official ? 1 : 0, status, stamp, stamp),
       ...coverStatements(env.DB, id, cover),
       sql(env.DB, 'INSERT INTO event_audit VALUES(?,?,?,?,?,?)', uid(), id, user.id, 'create', '', stamp),
@@ -382,6 +407,7 @@ async function route(request, env) {
       const status = user.role === 'admin' ? old.status : old.status === 'cancelled' ? 'cancelled' : 'pending';
       const cover = await validateCover(input.cover), stamp = now();
       await env.DB.batch([
+        eventSlotGuard(env.DB, old.host_id, d.starts, d.ends, status, old.id),
         sql(env.DB, `UPDATE events SET title=?,description=?,category=?,location=?,starts_at=?,ends_at=?,capacity=?,volunteer_capacity=?,official=?,status=?,reason='',updated_at=? WHERE id=?`, d.title, d.description, d.category, d.location, d.starts, d.ends, d.capacity, d.volunteers, user.role === 'admin' && input.official !== undefined ? Number(input.official) : old.official, status, stamp, old.id),
         ...coverStatements(env.DB, old.id, cover),
         sql(env.DB, 'INSERT INTO event_audit VALUES(?,?,?,?,?,?)', uid(), old.id, user.id, 'edit', '', stamp),
@@ -395,12 +421,14 @@ async function route(request, env) {
     if (method === 'DELETE') { await run(env.DB, 'DELETE FROM event_registrations WHERE event_id=? AND member_id=? AND kind=?', registration[1], user.id, kind); return json({ ok: true }); }
     const e = await first(env.DB, 'SELECT * FROM events WHERE id=?', registration[1]); if (!e || e.status !== 'published') fail(409, '活动未开放报名');
     if (e.starts_at <= now()) fail(409, '活动已开始，不能迟到报名');
+    if (!hasBoundDevice(env.DB, user.id)) fail(409, '请先绑定板子后再报名活动');
     const limit = kind === 'attendee' ? e.capacity : e.volunteer_capacity;
     if (!limit) fail(409, '未开放志愿者招募');
     const result = await run(env.DB, `INSERT OR IGNORE INTO event_registrations(event_id,member_id,kind,created_at)
-      SELECT ?,?,?,? WHERE (SELECT COUNT(*) FROM event_registrations WHERE event_id=? AND kind=?) < ? AND EXISTS(SELECT 1 FROM events WHERE id=? AND status='published' AND starts_at>unixepoch() AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=events.id))`, e.id, user.id, kind, now(), e.id, kind, limit, e.id);
+      SELECT ?,?,?,? WHERE (SELECT COUNT(*) FROM event_registrations WHERE event_id=? AND kind=?) < ? AND EXISTS(SELECT 1 FROM events WHERE id=? AND status='published' AND starts_at>unixepoch() AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=events.id)) AND EXISTS(SELECT 1 FROM devices WHERE member_id=? AND revoked_at IS NULL)`, e.id, user.id, kind, now(), e.id, kind, limit, e.id, user.id);
     if (!result.meta.changes) {
       const existing = await first(env.DB, 'SELECT 1 FROM event_registrations WHERE event_id=? AND member_id=? AND kind=?', e.id, user.id, kind);
+      if (!hasBoundDevice(env.DB, user.id)) fail(409, '请先绑定板子后再报名活动');
       if (!existing) fail(409, '活动已开始、未开放或名额已满');
     }
     return json({ ok: true });
@@ -510,8 +538,15 @@ async function adminRoute(request, env, url, user) {
     const status = data.status ?? old.status, official = data.official ?? Boolean(old.official), reason = str(data.reason ?? '', 500, '原因', false);
     if (!['pending','published','rejected','cancelled'].includes(status) || typeof official !== 'boolean') fail(400, '活动状态不合法');
     if (['rejected','cancelled'].includes(status) && !reason) fail(400, '请填写原因');
-    await run(env.DB, 'UPDATE events SET status=?,official=?,reason=?,updated_at=? WHERE id=?', status, Number(official), reason, now(), old.id);
-    await audit(env.DB, old.id, user.id, `status:${status},official:${official}`, reason); return json({ event: await eventDetail(env.DB, old.id) });
+    await env.DB.batch([
+      { run() {
+        const current = env.DB.raw.prepare('SELECT host_id,starts_at,ends_at FROM events WHERE id=?').get(old.id);
+        if (!current) fail(404, '活动不存在');
+        return eventSlotGuard(env.DB, current.host_id, current.starts_at, current.ends_at, status, old.id).run();
+      } },
+      sql(env.DB, 'UPDATE events SET status=?,official=?,reason=?,updated_at=? WHERE id=?', status, Number(official), reason, now(), old.id),
+      sql(env.DB, 'INSERT INTO event_audit VALUES(?,?,?,?,?,?)', uid(), old.id, user.id, `status:${status},official:${official}`, reason, now()),
+    ]); return json({ event: await eventDetail(env.DB, old.id) });
   }
   const roster = /^\/api\/admin\/events\/([a-f0-9-]{36})\/roster$/.exec(p);
   if (method === 'GET' && roster) return json({ registrations: await all(env.DB, 'SELECT r.kind,r.created_at,m.id,m.nickname,m.email FROM event_registrations r JOIN members m ON m.id=r.member_id WHERE r.event_id=? ORDER BY r.created_at', roster[1]), checkins: await all(env.DB, 'SELECT c.member_id,c.checked_at FROM checkins c WHERE c.event_id=? ORDER BY c.checked_at', roster[1]) });
@@ -535,6 +570,12 @@ async function adminRoute(request, env, url, user) {
 }
 async function deviceRoute(request, env, url) {
   const d = await deviceFromBearer(request, env), p = url.pathname, method = request.method;
+  const feedback = await notificationRoute(request, env, url, d, body);
+  if (feedback) return feedback;
+  const runtime = await runtimeRoute(request, env, url, d);
+  if (runtime) return runtime;
+  const batch = await hostBatchRoute(request, env, url, d, body);
+  if (batch) return batch;
   const hardware = await hardwareRoute(request, env, url, d, body);
   if (hardware) return hardware;
   if (method === 'GET' && p === '/api/device/me') return json({ member_id: d.member_id, nickname: d.nickname, bio: d.card_public ? d.bio : '', avatar: JSON.parse(d.avatar_json || '{}') });

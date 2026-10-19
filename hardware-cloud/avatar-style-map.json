@@ -1,0 +1,213 @@
+{
+  "release": "herstory-avatar-assets-v1",
+  "source_manifest_sha256": "353f90d48993ccfd69cca97514b8d24fd1e7f24a95d136cb104da0202e9e65c6",
+  "assets": {
+    "hst_ast_0019": {
+      "layer": "hst_layer_body",
+      "code": "body_check_shirt",
+      "sha256": "80fb611eb9698a0655a2e3d9b3f062abf075a1855aa689554d7acd3f39929801",
+      "rgb": "FEFEFE"
+    },
+    "hst_ast_0020": {
+      "layer": "hst_layer_body",
+      "code": "body_chinese",
+      "sha256": "aa2d780b215b30dbf960a22aa533e68fc1fdc844c1e19417e64db8535790ae72",
+      "rgb": "FFFFFF"
+    },
+    "hst_ast_0021": {
+      "layer": "hst_layer_body",
+      "code": "body_french_blouse",
+      "sha256": "5538d349d64af886777f2e6bae901aa963c105ca4062f359d07d306384263db3",
+      "rgb": "FFFFFF"
+    },
+    "hst_ast_0022": {
+      "layer": "hst_layer_body",
+      "code": "body_half_shoulder",
+      "sha256": "f7896b1a2c960d91a6ea599c1cf902f10030c8a8fd9ac10185215f66c232113b",
+      "rgb": "FFFFFF"
+    },
+    "hst_ast_0023": {
+      "layer": "hst_layer_body",
+      "code": "body_jacket",
+      "sha256": "4fd2aedf0a0ae360fe1c04868de97c0cbab6146c153fa837fd17092ded1cf4b4",
+      "rgb": "FFFFFF"
+    },
+    "hst_ast_0024": {
+      "layer": "hst_layer_body",
+      "code": "body_jumpsuit",
+      "sha256": "526302d1d5fa44c5dc71c6bfd0a952b34592878a999da4d5960e4b1d835b1574",
+      "rgb": "FFFFFF"
+    },
+    "hst_ast_0025": {
+      "layer": "hst_layer_body",
+      "code": "body_jumpsuit_with_stripestee",
+      "sha256": "f78e40547de9ac1f01fe595335f1973d55a3548af4a8355ad7d34e3149ac5dbe",
+      "rgb": "FEFEFE"
+    },
+    "hst_ast_0026": {
+      "layer": "hst_layer_body",
+      "code": "body_mermaid",
+      "sha256": "4f6efe4c28757013e85b72a8061ef301a9761b65c712c14ddfa30018fb7b3297",
+      "rgb": "FFFFFF"
+    },
+    "hst_ast_0027": {
+      "layer": "hst_layer_body",
+      "code": "body_shirt",
+      "sha256": "bf8d9d027523b106d7c36a608ff5ddab46b54c284a78e95356d79ad179e5c271",
+      "rgb": "FFFFFF"
+    },
+    "hst_ast_0028": {
+      "layer": "hst_layer_body",
+      "code": "body_singlet",
+      "sha256": "83e6c5a6515d3d8366f7705f0707248f6792b5b07a252f0ff5c3e22218013195",
+      "rgb": "FFFFFF"
+    },
+    "hst_ast_0029": {
+      "layer": "hst_layer_body",
+      "code": "body_strapless",
+      "sha256": "171536885df8c6cbc6476d38941acea85e4819c4757abffb72e9a4053912fbf4",
+      "rgb": "FFFFFF"
+    },
+    "hst_ast_0030": {
+      "layer": "hst_layer_body",
+      "code": "body_stripes_turtleneck",
+      "sha256": "5b66d8bc23073bd3c43c009d48b3de549f3eb9d3c33d108053b665dbe802391e",
+      "rgb": "FEFEFE"
+    },
+    "hst_ast_0031": {
+      "layer": "hst_layer_body",
+      "code": "body_suit",
+      "sha256": "e5adb168b6b838710b5f6a1efbc58cfd4742c9ae7bbdbb9c81c16e4bdba1e17b",
+      "rgb": "FFFFFF"
+    },
+    "hst_ast_0032": {
+      "layer": "hst_layer_body",
+      "code": "body_suit_vest",
+      "sha256": "16d353f14d97fddb94d7042994a7a634b13f8a5905924c7e3e888a671705c2af",
+      "rgb": "FFFFFF"
+    },
+    "hst_ast_0033": {
+      "layer": "hst_layer_body",
+      "code": "body_t_shirt",
+      "sha256": "4b5ff9be1719672150181f5f8e6c3cab287659250999ae4ce57ca2c3f7f658a0",
+      "rgb": "FFFFFF"
+    },
+    "hst_ast_0035": {
+      "layer": "hst_layer_hair",
+      "code": "hair_coffee_curls",
+      "sha256": "f7a82200c49133aac8b1bfaee5e6af7f5e8b81338881e26ddd85d9326419b174",
+      "rgb": "A9482B",
+      "hair_length": "short"
+    },
+    "hst_ast_0036": {
+      "layer": "hst_layer_hair",
+      "code": "hair_dark_purple_braid",
+      "sha256": "f18a638fa978839ded2ecae4558001e213e2cdddeb840f2ded0cbf013ae98ccd",
+      "rgb": "1A0232",
+      "hair_length": "long"
+    },
+    "hst_ast_0037": {
+      "layer": "hst_layer_hair",
+      "code": "hair_grey_blue_bob",
+      "sha256": "3407cce07ef949109c6639d6e76aa63422bc85b407ee1c4fb7d10ea60f3e07c7",
+      "rgb": "6887C4",
+      "hair_length": "medium"
+    },
+    "hst_ast_0038": {
+      "layer": "hst_layer_hair",
+      "code": "hair_lake_blue_pixie",
+      "sha256": "e7365e0f7316601bd1c3661bf941dcf23f1d9fd1f2a6d155b2b91974d0e58e83",
+      "rgb": "7AE4F4",
+      "hair_length": "short"
+    },
+    "hst_ast_0039": {
+      "layer": "hst_layer_hair",
+      "code": "hair_lemon_afro",
+      "sha256": "ff8e41d7961aa82c0456da36aa5d528173463c22919a599fe11fdc8db486df91",
+      "rgb": "FBCB02",
+      "hair_length": "medium"
+    },
+    "hst_ast_0040": {
+      "layer": "hst_layer_hair",
+      "code": "hair_neon_green_short",
+      "sha256": "b360566a4c482eceb24187aa78be57fdba8a689c900739d41debc0547d6a2bf5",
+      "rgb": "A4F638",
+      "hair_length": "short"
+    },
+    "hst_ast_0041": {
+      "layer": "hst_layer_hair",
+      "code": "hair_orange_wave",
+      "sha256": "2875f931544217eee7f11e2dbe180981bf57e93687a45923350b2fbcc3157efe",
+      "rgb": "FE9627",
+      "hair_length": "medium"
+    },
+    "hst_ast_0042": {
+      "layer": "hst_layer_hair",
+      "code": "hair_peach_princess_updo",
+      "sha256": "c0dfa210f488b7cf38d8047ae79be853ceec056a74da7bf47a17e2c0cbda639a",
+      "rgb": "FE85A4",
+      "hair_length": "long"
+    },
+    "hst_ast_0043": {
+      "layer": "hst_layer_hair",
+      "code": "hair_purple_beehive",
+      "sha256": "41e60984d5b25079da6ee639676242485f8e416845357b9f65e8346bfc02733b",
+      "rgb": "8876FD",
+      "hair_length": "short"
+    },
+    "hst_ast_0044": {
+      "layer": "hst_layer_hair",
+      "code": "hair_purple_full_beard",
+      "sha256": "3fd92c72fa195893ee5c387549f059e46492a0096c554d1eef48130426e609c3",
+      "rgb": "A787F6",
+      "hair_length": "short"
+    },
+    "hst_ast_0045": {
+      "layer": "hst_layer_hair",
+      "code": "hair_rose_double_ponytail",
+      "sha256": "187e136c4b2342fa97fef47cb198254b6878dab1f6c2e4c89993212e7cfaf879",
+      "rgb": "FD52C9",
+      "hair_length": "long"
+    },
+    "hst_ast_0046": {
+      "layer": "hst_layer_hair",
+      "code": "hair_royal_blue_pixie",
+      "sha256": "433a7c5bb9cfad35299eadd126c52a9610085f114da28ad38073e3710d8e6a04",
+      "rgb": "3964FB",
+      "hair_length": "short"
+    },
+    "hst_ast_0047": {
+      "layer": "hst_layer_hair",
+      "code": "hair_sky_blue_bob",
+      "sha256": "b6461db2f4d6dca09a105fff0ca697a84cf88814dbf0a03c6a02a9c7d8c894a5",
+      "rgb": "37D2FE",
+      "hair_length": "medium"
+    },
+    "hst_ast_0048": {
+      "layer": "hst_layer_hair",
+      "code": "hair_turquoise_high_ponytail",
+      "sha256": "5f0bdf4cdb7f43f192f537fff64cbfb459cdb2002693686d30f7d1d4ea0b8b32",
+      "rgb": "53FEE7",
+      "hair_length": "long"
+    },
+    "hst_ast_0049": {
+      "layer": "hst_layer_hair",
+      "code": "hair_watermelon_low_ponytail",
+      "sha256": "9352546496c4f94405ded895130137a1f4068604a68ad41099c235f5b046343d",
+      "rgb": "F35858",
+      "hair_length": "long"
+    },
+    "hst_ast_0050": {
+      "layer": "hst_layer_hoodie",
+      "code": "hoodie_bow",
+      "sha256": "fb32b4a838604498acbd76599ea46d24d11aec09434b99256bcce4a08ab3e4d0",
+      "rgb": "FFFEFF"
+    },
+    "hst_ast_0051": {
+      "layer": "hst_layer_hoodie",
+      "code": "hoodie_hoodie",
+      "sha256": "5af2d40675d15e7dba319e19df990727d711265a35f15feecebc4502bf438d26",
+      "rgb": "FFFFFF"
+    }
+  }
+}
