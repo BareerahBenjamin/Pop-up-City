@@ -1,0 +1,21 @@
+{
+  "name": "Pop City Pixel Names v1",
+  "style": "popcity-pixel-v1",
+  "source": "assets/fonts/fusion-pixel/fusion-pixel-12px-monospaced-zh_hans.bdf",
+  "source_url": "https://github.com/TakWolf/fusion-pixel-font/releases/tag/2026.09.01",
+  "source_sha256": "9cb8f307b8835ff071e62eaa2fd473fa0683d0ae2c5af8583eb9c5a183953f00",
+  "ascii_source": "firmware/main/generated/pixel_glyphs.h; approved design 5x7 at integer scale 2",
+  "cell_width": 12,
+  "cell_height": 16,
+  "glyphs": 7019,
+  "bytes": 252692,
+  "sha256": "cfcd1ffccab4768ebdf2d4f2b226db8f50a9d07e8c86ae22a91a0b899a8d6700",
+  "license": "SIL OFL 1.1 and included upstream notices; assets/fonts/fusion-pixel/",
+  "rare_sample_20bb7_present": false,
+  "legacy_supplements": 8842,
+  "legacy_supplement_source": "NotoSansCJKsc-Regular.otf; build-time 12px monochrome only; preserves prior CJK coverage",
+  "missing_glyph": "U+FFFD pixel box only for unsupported Unicode; no runtime font substitution",
+  "subset_source": "GB2312 6763 Han + punctuation + assets/fonts/name-codepoints.json",
+  "common_han_count": 6763,
+  "missing_requested_codepoints": []
+}

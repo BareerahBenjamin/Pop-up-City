@@ -1,4 +1,4 @@
-import { nameBitmap } from './hardware-cloud/name-bitmap.mjs';
+import { nameBitmap,NAME_BITMAP_STYLE } from './hardware-cloud/name-bitmap.mjs';
 import { createHash, createHmac, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
 import { HardwareError, hardwareKind } from './hardware.js';
 const now=()=>Math.floor(Date.now()/1000);
@@ -8,7 +8,7 @@ const hex=s=>typeof s==='string'&&/^[a-f0-9]{64}$/.test(s);
 const fail=(status,code,message)=>{throw new HardwareError(status,code,message);};
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
 function transaction(db,fn){db.raw.exec('BEGIN IMMEDIATE');try{const result=fn();db.raw.exec('COMMIT');return result;}catch(e){db.raw.exec('ROLLBACK');throw e;}}
-async function signed(board,data){if(data.state==='pending')data={...data,member_label_bitmap:await nameBitmap(data.member_label)};if(data.state==='bound'){data={...data,member_name_bitmap:await nameBitmap(data.member_name,true)};}const payload=JSON.stringify({...data,recipient_device_id:board.id});return json({payload,signature:createHmac('sha256',Buffer.from(board.token_hash,'hex')).update(payload).digest('hex')});}
+async function signed(board,data){if(data.state==='pending')data={...data,member_label_bitmap:await nameBitmap(data.member_label),member_label_bitmap_style:NAME_BITMAP_STYLE};if(data.state==='bound'){data={...data,member_name_bitmap:await nameBitmap(data.member_name,true),member_name_bitmap_style:NAME_BITMAP_STYLE};}const payload=JSON.stringify({...data,recipient_device_id:board.id});return json({payload,signature:createHmac('sha256',Buffer.from(board.token_hash,'hex')).update(payload).digest('hex')});}
 function audit(db,row,action){db.raw.prepare('INSERT INTO device_claim_audit VALUES(?,?,?,?,?,?)').run(randomUUID(),row.id,row.requested_member_id,row.requested_by,action,now());}
 function memberAvailable(db,id){
  const member=db.raw.prepare("SELECT id,nickname,email FROM members WHERE id=? AND status!='disabled'").get(id);
@@ -40,6 +40,23 @@ function status(db,row){
  const hint=member?member.email.slice(0,2)+'***'+member.email.slice(member.email.indexOf('@')):'';
  return {state:member?'pending':'unbound',claim_code:live.claim_code,expires_at:live.expires_at,server_time:now(),...(member?{request_id:live.request_id,member_id:member.id,member_label:member.nickname,member_hint:hint}:{})};
 }
+// Only opted-in firmware handles the signed reset. No credentials are logged or stored here.
+function reenrollment(db,row){
+ const old=db.raw.prepare('SELECT * FROM devices WHERE id=?').get(row.id);
+ if(!old?.revoked_at)return null;
+ let move=db.raw.prepare('SELECT * FROM device_reenrollment WHERE old_device_id=?').get(row.id);
+ if(move?.acknowledged_at)return null;
+ if(!move){
+  if(db.raw.prepare('SELECT COUNT(*) n FROM device_inventory').get().n>=1000)fail(503,'INVENTORY_FULL','设备初始化数量已达上限，请联系管理员');
+  const id=randomUUID();
+  const token=createHmac('sha256',Buffer.from(row.token_hash,'hex')).update('popcity-reenroll-v1:'+id).digest('hex');
+  db.raw.prepare('INSERT INTO device_inventory(id,token_hash,created_at,last_seen_at) VALUES(?,?,?,?)').run(id,hash(token),now(),now());
+  db.raw.prepare('INSERT INTO device_reenrollment VALUES(?,?,?,NULL)').run(row.id,id,now());
+  move={new_device_id:id};
+ }
+ const token=createHmac('sha256',Buffer.from(row.token_hash,'hex')).update('popcity-reenroll-v1:'+move.new_device_id).digest('hex');
+ return {state:'reset_required',replacement_device_id:move.new_device_id,replacement_device_token:token};
+}
 export async function enrollmentRoute(request,env,url,readBody){
  const db=env.DB,p=url.pathname,method=request.method;
  if(p==='/api/device-enrollment/register'&&method==='POST'){
@@ -66,7 +83,11 @@ export async function enrollmentRoute(request,env,url,readBody){
   if(legacy&&method==='GET'&&p==='/api/device-enrollment/status')return signed(legacy,status(db,legacy));
   fail(401,'INVALID_DEVICE','设备身份无效');
  }
- if(method==='GET'&&p==='/api/device-enrollment/status')return signed(row,transaction(db,()=>{db.raw.prepare('UPDATE device_inventory SET last_seen_at=? WHERE id=?').run(now(),row.id);return status(db,row);}));
+ if(method==='GET'&&p==='/api/device-enrollment/status')return signed(row,transaction(db,()=>{
+  db.raw.prepare('UPDATE device_inventory SET last_seen_at=? WHERE id=?').run(now(),row.id);
+  db.raw.prepare('UPDATE device_reenrollment SET acknowledged_at=COALESCE(acknowledged_at,?) WHERE new_device_id=?').run(now(),row.id);
+  return (url.searchParams.get('reset_on_revoke')==='1'&&reenrollment(db,row))||status(db,row);
+ }));
  if(method!=='POST'||p!=='/api/device-enrollment/confirm')fail(404,'UNKNOWN_ROUTE','接口不存在');
  const data=await readBody(request);
  if(!uuid(data.request_id)||!['accept','reject'].includes(data.decision))fail(400,'INVALID_CONFIRMATION','绑定确认无效');

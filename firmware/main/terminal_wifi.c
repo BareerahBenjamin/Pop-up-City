@@ -21,7 +21,8 @@ static esp_event_handler_instance_t s_ip_handler;
 static esp_event_handler_instance_t s_lost_ip_handler;
 static bool s_initialized;
 static bool s_driver_initialized;
-static atomic_bool s_reconnect = true;
+static atomic_bool s_reconnect, s_associated;
+static atomic_uint s_reason;
 
 static void startup_rollback(void)
 {
@@ -50,13 +51,20 @@ static void event_handler(void *arg, esp_event_base_t base, int32_t id,
                           void *data)
 {
     (void)arg;
-    (void)data;
     if (base == WIFI_EVENT && id == WIFI_EVENT_STA_START) {
         if (s_reconnect) (void)esp_wifi_connect();
+    } else if (base == WIFI_EVENT && id == WIFI_EVENT_STA_CONNECTED) {
+        s_associated = true;
+        s_reason = 0;
     } else if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
         xEventGroupClearBits(s_events, CONNECTED_BIT);
-        if (s_reconnect) (void)esp_wifi_connect();
+        s_associated = false;
+        const wifi_event_sta_disconnected_t *event = data;
+        if (event && event->reason != WIFI_REASON_ASSOC_LEAVE) s_reason = event->reason;
+        /* The application worker owns bounded retries, never the event callback. */
     } else if (base == IP_EVENT && id == IP_EVENT_STA_GOT_IP) {
+        s_associated = true;
+        s_reason = 0;
         xEventGroupSetBits(s_events, CONNECTED_BIT);
     } else if (base == IP_EVENT && id == IP_EVENT_STA_LOST_IP) {
         xEventGroupClearBits(s_events, CONNECTED_BIT);
@@ -66,13 +74,15 @@ static void event_handler(void *arg, esp_event_base_t base, int32_t id,
 esp_err_t terminal_wifi_start(const char *ssid, const char *password)
 {
     if (s_initialized) return ESP_OK;
-    if (!ssid || !ssid[0] || strlen(ssid) > sizeof(((wifi_config_t *)0)->sta.ssid) ||
+    if (!ssid || strlen(ssid) > sizeof(((wifi_config_t *)0)->sta.ssid) ||
         !password || strlen(password) > sizeof(((wifi_config_t *)0)->sta.password)) {
         return ESP_ERR_INVALID_ARG;
     }
     s_events = xEventGroupCreate();
     if (!s_events) return ESP_ERR_NO_MEM;
-    s_reconnect = true;
+    s_reconnect = ssid[0] != 0;
+    s_associated = false;
+    s_reason = 0;
 
     esp_err_t error = esp_netif_init();
     if (error != ESP_OK && error != ESP_ERR_INVALID_STATE) goto fail;
@@ -111,7 +121,7 @@ esp_err_t terminal_wifi_start(const char *ssid, const char *password)
                                                  WIFI_AUTH_OPEN;
     error = esp_wifi_set_storage(WIFI_STORAGE_RAM);
     if (error == ESP_OK) error = esp_wifi_set_mode(WIFI_MODE_STA);
-    if (error == ESP_OK) error = esp_wifi_set_config(WIFI_IF_STA, &config);
+    if (error == ESP_OK && ssid[0]) error = esp_wifi_set_config(WIFI_IF_STA, &config);
     if (error == ESP_OK) error = esp_wifi_start();
     if (error != ESP_OK) goto fail;
     s_initialized = true;
@@ -140,6 +150,8 @@ void terminal_wifi_pause(bool pause)
     s_reconnect = !pause;
     if (pause && s_initialized) {
         xEventGroupClearBits(s_events, CONNECTED_BIT);
+        s_associated = false;
+        s_reason = 0;
         (void)esp_wifi_disconnect();
     }
 }
@@ -157,7 +169,24 @@ esp_err_t terminal_wifi_set_network(const char *ssid, const char *password)
     esp_err_t error=esp_wifi_set_config(WIFI_IF_STA,&config);
     if (error==ESP_OK) {
         s_reconnect=true;
+        s_reason=0;
         error=esp_wifi_connect();
     }
     return error;
+}
+
+pc_wifi_status terminal_wifi_status(void)
+{
+    pc_wifi_status status = {.associated = s_associated,
+        .has_ip = terminal_wifi_is_connected(), .disconnect_reason = (uint16_t)s_reason};
+    switch (status.disconnect_reason) {
+    case 0: status.error = PC_WIFI_ERROR_NONE; break;
+    case WIFI_REASON_AUTH_FAIL: status.error = PC_WIFI_ERROR_AUTH; break;
+    case WIFI_REASON_NO_AP_FOUND:
+    case WIFI_REASON_NO_AP_FOUND_W_COMPATIBLE_SECURITY:
+    case WIFI_REASON_NO_AP_FOUND_IN_AUTHMODE_THRESHOLD:
+    case WIFI_REASON_NO_AP_FOUND_IN_RSSI_THRESHOLD: status.error = PC_WIFI_ERROR_NO_AP; break;
+    default: status.error = PC_WIFI_ERROR_LINK; break;
+    }
+    return status;
 }

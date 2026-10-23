@@ -57,3 +57,14 @@ test('discovery separates long activities and drafts from near-term events, arch
   const below=make('below',now,now+3*day-1);
   assert.equal(discoveryGroups([below],now).nearby[0].id,'below');
 });
+
+test('time calendar keeps long activities out of hourly slots and offers one collapsed period list',()=>{
+  const {context,dayStart,dashboardCalendar}=helpers(),start=dayStart('2026-10-20');
+  vm.runInContext("calendarDate='2026-10-20';calendarDays=3;calendarMode='time';function esc(v){return String(v??'')} interestButton=()=>'';interestFeedbackSlot=()=>'';function statusText(s){return s}",context);
+  const make=(id,from,to)=>({id,title:id,category:'共创',location:'客厅',status:'published',starts_at:start+from,ends_at:start+to});
+  const html=dashboardCalendar([make('long',-86400,8*86400),make('today',10*3600,11*3600)]);
+  assert.equal((html.match(/href="#event\/long"/g)||[]).length,1);
+  assert.equal((html.match(/href="#event\/today"/g)||[]).length,1);
+  assert.match(html,/<details class="calendar-longterm" >/);
+  assert.doesNotMatch(html,/class="calendar-axis"[^>]*>00:00/);
+});

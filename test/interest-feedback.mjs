@@ -83,7 +83,7 @@ export async function checkInterestFeedback({browser,origin,db,member,now,out}) 
   for(const width of [320,375,768,1440]){
    await page.setViewportSize({width,height:900});await card(id).scrollIntoViewIfNeeded();
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
-   assert.equal(await card(id).locator('.interest-confirmation').evaluate(e=>getComputedStyle(e).fontSize),'18px');
+   assert.equal(await card(id).locator('.interest-confirmation').evaluate(e=>getComputedStyle(e).fontSize),'20px');
    await card(id).screenshot({path:`${out}/interest-card-${width}.png`});
   }
   await page.locator('[data-action="calendar-view"][data-days="7"]').click();
@@ -91,9 +91,13 @@ export async function checkInterestFeedback({browser,origin,db,member,now,out}) 
   await page.goto(`${origin}/#event/${id}`);await page.locator('.detail .interest-confirmation').waitFor();
   await page.screenshot({path:`${out}/interest-detail-desktop.png`});
   db.raw.prepare("UPDATE events SET status='cancelled' WHERE id=?").run(id);
-  await load();await confirmed(id).waitFor();assert.match(await card(id).locator('.interest-note').innerText(),/已取消/);
-  assert.equal(await card(id).locator('[data-action="view-interest-agenda"]').count(),0);
-  await heart(id).click();await waitSelected(id,false);assert.equal(await heart(id).isDisabled(),true);
+  await load();assert.equal(await card(id).count(),0);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) n FROM event_interests WHERE event_id=? AND member_id=?').get(id,member.id).n,1);
+  await page.goto(`${origin}/#event/${id}`);await page.locator('.detail .interest-confirmation').waitFor();
+  assert.match(await page.locator('.detail .interest-note').innerText(),/已取消/);
+  assert.equal(await page.locator('.detail [data-action="view-interest-agenda"]').count(),0);
+  await page.locator('.detail .interest-button').click();await waitSelected(id,false);
+  assert.equal(await page.locator('.detail .interest-button').isDisabled(),true);
   assert.deepEqual(errors,[]);
   console.log('PASSED: interest inline feedback, viewport/focus, future/detail navigation, attendance independence, failure/retry/read recovery, duplicate clicks, late navigation, 320–1440px layouts.');
  }finally{await context.close();db.raw.prepare('DELETE FROM event_registrations WHERE event_id IN (?,?)').run(id,futureId);db.raw.prepare('DELETE FROM event_interests WHERE event_id IN (?,?)').run(id,futureId);db.raw.prepare('DELETE FROM events WHERE id IN (?,?)').run(id,futureId);}

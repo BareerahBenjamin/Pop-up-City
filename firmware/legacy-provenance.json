@@ -1,0 +1,44 @@
+{
+  "baseline_elf": "39486f12f070cedda597b05a785b7672499bd16c53de3a8dd2cd239df5d0994e",
+  "strategy": "Reuse unchanged hardware drivers and adapted provisioning/presence modules; replace old monolithic UI/application orchestration with approved UI and event-storage protocols. Not a binary-identical reconstruction.",
+  "hardware_files": [
+    {
+      "file": "include/bsp_battery.h",
+      "sha256": "27cfce847b9bae784fc089de0f64d60f533e33d96eb5b20e1585ba8b01ca5373"
+    },
+    {
+      "file": "include/bsp_button.h",
+      "sha256": "7d5525fd5a443c6302f6c38f0ef5ccc7dd333096e359031e2d645d24fb781309"
+    },
+    {
+      "file": "include/bsp_display.h",
+      "sha256": "fc07ffbeb66ded0ed5a259122aa766d7a8628859d506bad45e86f2548f422d08"
+    },
+    {
+      "file": "include/bsp_i2c.h",
+      "sha256": "0b2e570ca593c4dde791def476c1ab51fcb1cacb122de90fa5b1ff78bd5cc053"
+    },
+    {
+      "file": "include/bsp_pins.h",
+      "sha256": "b3482f27dbc8e9ff0d82308192b15542992bd3e2af345bb232112912a6e76049"
+    },
+    {
+      "file": "src/bsp_battery.c",
+      "sha256": "2cf416ae4e4ebe0feae6c78e58b55e332535946f2ce9e015b59779f872c51ce9"
+    },
+    {
+      "file": "src/bsp_button.c",
+      "sha256": "376550acdb890c020ec5ce77536d21b02d6b0180902f79dc6ef6d8e0a84aa075"
+    },
+    {
+      "file": "src/bsp_display.c",
+      "sha256": "3fe74309d2297bd5e321228eb45b2f7c4392d28d5b7110e9241ba179ba69d868"
+    },
+    {
+      "file": "src/bsp_i2c.c",
+      "sha256": "53e6d1dcda8715ef2dfd57134019dadd10aeb5095e24cdac6bec16c2f0c64fbe"
+    }
+  ],
+  "audio": "not linked; no recording/playback tasks or menu entries",
+  "legacy_save": "Read only own historical default-NVS device_identity/planet_net; commit to popcity event_storage; never open checkin_user event-save namespace."
+}

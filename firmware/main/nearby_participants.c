@@ -3,7 +3,7 @@
 
 static bool live(const nearby_participant_t *p, uint32_t now)
 {
-    return p->occupied && (uint32_t)(now - p->seen_ms) < NEARBY_TTL_MS;
+    return p->occupied && !p->checked_in && (uint32_t)(now - p->seen_ms) < NEARBY_TTL_MS;
 }
 void nearby_init(nearby_participants_t *list)
 {
@@ -64,4 +64,12 @@ size_t nearby_snapshot(const nearby_participants_t *list,uint32_t now,nearby_par
     size_t count=0;
     for(int i=0;i<NEARBY_CAPACITY;i++)if(live(&list->entries[i],now))out[count++]=list->entries[i];
     return count;
+}
+
+size_t nearby_host_count(const nearby_participants_t *list,uint32_t now){size_t n=0;if(!list)return 0;for(int i=0;i<NEARBY_CAPACITY;i++)if(list->entries[i].occupied&&(uint32_t)(now-list->entries[i].seen_ms)<NEARBY_TTL_MS&&list->entries[i].host_eligible&&(uint32_t)(now-list->entries[i].host_checked_ms)<5000u)n++;return n;}
+
+bool nearby_prune_checked_selection(nearby_participants_t *list,uint32_t now){
+ if(!list||list->selected<0||list->selected>=NEARBY_CAPACITY||!list->entries[list->selected].checked_in)return false;
+ if(!nearby_move(list,1,now))list->selected=-1;
+ return true;
 }

@@ -2,13 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
-function helpers(){
-  const context=vm.createContext({document:{addEventListener(){}},window:{addEventListener(){}},setInterval(){},Intl,Date});
+function helpers(clock){
+  const context=vm.createContext({document:{addEventListener(){},querySelector(){return null}},window:{addEventListener(){}},setInterval(){},Intl,Date:clock===undefined?Date:class extends Date {static now(){return clock;}}});
   vm.runInContext(['event-tools.js','dashboard.js','month-calendar.js','campus-map.js'].map(name=>readFileSync(new URL(`../public/${name}`,import.meta.url),'utf8')).join('\n')+`
     function esc(value){return String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;')}
     function statusText(value){return value}
     interestButton=()=>'';interestFeedbackSlot=()=>'';
-    this.helpers={monthDays,shiftMonth,eventsOnDay,monthCalendar,campusPlaceFor,dayStart};`,context);
+    function render(){}
+    this.helpers={monthDays,shiftMonth,eventsOnDay,monthCalendar,campusPlaceFor,dayStart,handleMonthAction,selectedDate:()=>calendarDate};`,context);
   return {context,...context.helpers};
 }
 test('month grid covers full weeks, leap February, six-row months and year boundaries in venue time',()=>{
@@ -22,6 +23,38 @@ test('month grid covers full weeks, leap February, six-row months and year bound
   assert.equal(shiftMonth('2026-12-31',1),'2027-01-31');
   assert.equal(shiftMonth('1970-01-01',-1),'1970-01-01');
   assert.equal(shiftMonth('2099-12-31',1),'2099-12-31');
+});
+test('month toolbar moves by one venue day, crossing months only at the actual boundary',async()=>{
+  const {context,handleMonthAction,selectedDate}=helpers();
+  for(const [date,action,expected] of [
+    ['2026-10-21','month-next','2026-10-22'],
+    ['2026-10-21','month-prev','2026-10-20'],
+    ['2026-10-31','month-next','2026-11-01'],
+    ['2026-11-01','month-prev','2026-10-31'],
+    ['2028-02-28','month-next','2028-02-29'],
+    ['2028-02-29','month-next','2028-03-01'],
+    ['2026-12-31','month-next','2027-01-01'],
+    ['1970-01-01','month-prev','1970-01-01'],
+    ['2099-12-31','month-next','2099-12-31'],
+  ]){
+    vm.runInContext(`calendarDate='${date}'`,context);
+    assert.equal(await handleMonthAction({dataset:{action}}),true);
+    assert.equal(selectedDate(),expected,`${date}: ${action}`);
+  }
+});
+test('today returns to the venue date and day controls remain available within boundary months',async()=>{
+  const {context,handleMonthAction,selectedDate,monthCalendar}=helpers(Date.parse('2026-10-20T23:30:00Z'));
+  vm.runInContext("calendarDate='2026-11-21'",context);
+  await handleMonthAction({dataset:{action:'month-today'}});
+  assert.equal(selectedDate(),'2026-10-21');
+  const button=(html,action)=>html.match(new RegExp(`<button[^>]*data-action="${action}"[^>]*>`))[0];
+  for(const [date,prevDisabled,nextDisabled] of [['1970-01-01',true,false],['1970-01-02',false,false],['2099-12-30',false,false],['2099-12-31',false,true]]){
+    vm.runInContext(`calendarDate='${date}'`,context);const html=monthCalendar([]);
+    assert.match(button(html,'month-prev'),/aria-label="上一天"/);
+    assert.match(button(html,'month-next'),/aria-label="下一天"/);
+    assert.equal(button(html,'month-prev').includes('disabled'),prevDisabled);
+    assert.equal(button(html,'month-next').includes('disabled'),nextDisabled);
+  }
 });
 test('month day selection includes cross-midnight events but never exact-midnight endings, drafts or other dates',()=>{
   const {dayStart,eventsOnDay}=helpers(),start=dayStart('2026-10-19');
@@ -48,4 +81,17 @@ test('map resolves only known venue aliases and gives specific floor names prior
   assert.equal(find('cue-D打车定位'),'taxi');
   assert.equal(find('迎新点'),'welcome');
   assert.equal(find('共创空间'),null);assert.equal(find('陶邑潮生酒店'),null);assert.equal(find(''),null);
+});
+
+test('calendar prioritizes events starting on the selected day and lists long events once outside daily slots',()=>{
+  const {context,eventsOnDay,monthCalendar,dayStart}=helpers(),start=dayStart('2026-10-20');
+  vm.runInContext("calendarDate='2026-10-20'",context);
+  const make=(id,from,to)=>({id,title:id,category:'学习',location:'E栋',status:'published',starts_at:start+from,ends_at:start+to});
+  const events=[make('long',-7*86400,7*86400),make('overnight',-3600,7200),make('today',10*3600,11*3600)];
+  assert.deepEqual(Array.from(eventsOnDay(events,'2026-10-20'),e=>e.id),['today','overnight']);
+  const html=monthCalendar(events);
+  assert.equal((html.match(/href="#event\/long"/g)||[]).length,1);
+  assert.ok(html.indexOf('class="month-day-agenda"')<html.indexOf('class="month-scroll"'));
+  assert.match(html,/<details class="calendar-longterm" >/);
+  assert.equal(events.length,3);
 });

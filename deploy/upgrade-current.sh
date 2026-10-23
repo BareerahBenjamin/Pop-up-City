@@ -22,6 +22,12 @@ flock -n 9 || { echo '已有部署运行中。' >&2; exit 1; }
 base=/opt/herstory-popup-city
 node=$base/runtime/bin/node
 npm=$base/runtime/lib/node_modules/npm/bin/npm-cli.js
+if [[ ! -f $npm ]]; then
+  npm_launcher=$(command -v npm || true)
+  [[ -n $npm_launcher ]] || { echo '找不到 npm，请提供现有 npm 安装位置。' >&2; exit 1; }
+  npm=$(readlink -f "$npm_launcher")
+fi
+[[ -f $npm ]] || { echo "npm 入口不存在：$npm" >&2; exit 1; }
 envfile=/etc/herstory-popup-city/server.env
 service=herstory-popup-city.service
 owner=herstory-popup-city
@@ -68,12 +74,12 @@ mv -T "$base/current.next" "$base/current"
 systemctl start "$service"
 healthy=0
 for attempt in {1..15}; do
-  if curl -fsS --max-time 4 http://127.0.0.1:3300/healthz | "$node" --input-type=module -e 'let s="";for await(const b of process.stdin)s+=b;if(JSON.parse(s).status!=="ok")process.exit(1)'; then healthy=1; break; fi
+  if curl -fsS --max-time 4 http://127.0.0.1:3300/healthz 2>/dev/null | "$node" --input-type=module -e 'let s="";for await(const b of process.stdin)s+=b;try{if(JSON.parse(s).status!=="ok")process.exit(1)}catch{process.exit(1)}'; then healthy=1; break; fi
   sleep 1
 done
 if [[ $healthy != 1 ]]; then systemctl stop "$service"; echo '本机健康检查失败。' >&2; exit 1; fi
 stopped=0
-if ! curl -fsS --max-time 15 https://herstory.net.cn/healthz | "$node" --input-type=module -e 'let s="";for await(const b of process.stdin)s+=b;if(JSON.parse(s).status!=="ok")process.exit(1)'; then
+if ! curl -fsS --max-time 15 https://herstory.net.cn/healthz | "$node" --input-type=module -e 'let s="";for await(const b of process.stdin)s+=b;try{if(JSON.parse(s).status!=="ok")process.exit(1)}catch{process.exit(1)}'; then
   echo "本机已健康启动，但域名检查未通过；服务保留运行。检查代理/域名，再从另一台电脑验收。新版本：$release" >&2
   exit 1
 fi

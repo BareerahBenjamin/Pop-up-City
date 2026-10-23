@@ -18,9 +18,9 @@ typedef struct {cJSON *vectors;pc_store *store;bool timeout,corrupt,wrong_recipi
 static uint32_t clock_ms(void *ctx){return ((mock *)ctx)->ms;}
 static void pulse(void *ctx,unsigned duration){mock *m=ctx;assert(duration==1000);assert(m->store->data.feedback_consumed>0);m->pulses++;}
 static bool transport(void *ctx,bool get,const char *path,const char *body,char *out,size_t capacity,int *status){
- mock *m=ctx;m->requests++;m->ms+=m->latency_ms;*status=200;if(m->timeout)return false;if(m->too_large){memset(out,'x',capacity);return true;}
+ mock *m=ctx;assert(capacity==(!strncmp(path,"/api/device-enrollment/",23)?4096u:PC_CLOUD_RESPONSE_BYTES));m->requests++;m->ms+=m->latency_ms;*status=200;if(m->timeout)return false;if(m->too_large){memset(out,'x',capacity);return true;}
  const char *name=NULL;cJSON *request=body[0]?cJSON_Parse(body):NULL;
- if(strstr(path,"/device-enrollment/status")){assert(get);name=m->enrollment==1?"enrollment_waiting":m->enrollment==2?"enrollment_pending":m->enrollment==4?"enrollment_revoked":"enrollment_bound";}
+ if(strstr(path,"/device-enrollment/status")){assert(get);name=m->enrollment==1?"enrollment_waiting":m->enrollment==2?"enrollment_pending":m->enrollment==5?"enrollment_reset":m->enrollment==4?"enrollment_revoked":"enrollment_bound";}
  else if(strstr(path,"/device-enrollment/confirm")){assert(!get);assert(!strcmp(cJSON_GetObjectItemCaseSensitive(request,"request_id")->valuestring,"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"));if(!strcmp(cJSON_GetObjectItemCaseSensitive(request,"decision")->valuestring,"accept")){name="enrollment_bound";m->enrollment=3;}else{name="enrollment_rejected";m->enrollment=1;}if(m->confirm_timeout){cJSON_Delete(request);return false;}}
  else if(strstr(path,"/local/friend/retire")){assert(!get);assert(!strcmp(cJSON_GetObjectItemCaseSensitive(request,"user_proof")->valuestring,cJSON_GetObjectItemCaseSensitive(m->vectors,"expected_friend_retire_proof")->valuestring));if(m->friend_timeout){cJSON_Delete(request);return false;}m->friend_retired=true;name="friend_retire";}
  else if(strstr(path,"/local/friend/confirm")){assert(!get&&m->store->data.pending[0].kind==PC_PENDING_FRIEND);assert(!strcmp(cJSON_GetObjectItemCaseSensitive(request,"user_proof")->valuestring,cJSON_GetObjectItemCaseSensitive(m->vectors,"expected_friend_proof")->valuestring));if(m->friend_timeout){cJSON_Delete(request);return false;}name="friend_confirmed";}
@@ -52,6 +52,7 @@ static bool transport(void *ctx,bool get,const char *path,const char *body,char 
  if(m->malformed==11)cJSON_ReplaceItemInObjectCaseSensitive(payload,"activity_id",cJSON_CreateString(retry));
  if(m->malformed==12)cJSON_ReplaceItemInObjectCaseSensitive(payload,"name_bitmap",cJSON_CreateString("00"));
  if(m->malformed==13)cJSON_ReplaceItemInObjectCaseSensitive(cJSON_GetObjectItemCaseSensitive(payload,"host"),"active_title_bitmap",cJSON_CreateString("00"));
+ if(m->malformed==15)cJSON_DeleteItemFromObjectCaseSensitive(payload,"member_label_bitmap");
  if(m->malformed==14)cJSON_ReplaceItemInObjectCaseSensitive(cJSON_GetArrayItem(cJSON_GetObjectItemCaseSensitive(payload,"items"),0),"name_bitmap",cJSON_CreateString("00"));
  if(m->malformed>=15&&m->malformed<=22){cJSON *visual=cJSON_GetObjectItemCaseSensitive(payload,"visual"),*self=cJSON_GetObjectItemCaseSensitive(visual,"self"),*peer=cJSON_GetObjectItemCaseSensitive(visual,"peer");
   if(m->malformed==15)cJSON_DeleteItemFromObjectCaseSensitive(payload,"visual");
@@ -67,10 +68,22 @@ static bool transport(void *ctx,bool get,const char *path,const char *body,char 
  if(m->corrupt)cJSON_GetObjectItemCaseSensitive(envelope,"signature")->valuestring[0]^=1;
  char *json=cJSON_PrintUnformatted(envelope);assert(strlen(json)<capacity);memcpy(out,json,strlen(json)+1);free(json);cJSON_Delete(envelope);return true;
 }
+static bool deferred_transport(void *ctx,bool get,const char *path,const char *body,char **out,size_t capacity,size_t *allocated_bytes,int *status){
+ char *buffer=calloc(1,capacity);assert(buffer);bool ok=transport(ctx,get,path,body,buffer,capacity,status);char *end=memchr(buffer,0,capacity);*allocated_bytes=end?(size_t)(end-buffer)+1:capacity;*out=malloc(*allocated_bytes);assert(*out);memcpy(*out,buffer,*allocated_bytes);free(buffer);return ok;
+}
+static bool deferred_no_buffer(void *ctx,bool get,const char *path,const char *body,char **out,size_t capacity,size_t *allocated_bytes,int *status){
+ (void)ctx;(void)get;(void)path;(void)body;(void)capacity;(void)status;*allocated_bytes=0;*out=NULL;return false;
+}
 int main(int argc,char **argv){assert(argc==2);FILE *file=fopen(argv[1],"rb");assert(file);fseek(file,0,SEEK_END);long size=ftell(file);rewind(file);char *json=calloc(1,(size_t)size+1);assert(json&&fread(json,1,(size_t)size,file)==(size_t)size);fclose(file);cJSON *vectors=cJSON_Parse(json);free(json);assert(vectors);
  pc_store store;CHECK(pc_store_load(&store)==ESP_ERR_NVS_NOT_FOUND);pc_personal_data d=store.data;strcpy(d.device_id,device);strcpy(d.member_id,member);memset(d.device_token,'a',64);strcpy(d.server_origin,"https://example.test");CHECK(pc_store_commit(&store,&d)==ESP_OK);
  pc_state state;pc_init(&state,true,true);pc_cloud cloud;mock m={.vectors=vectors,.store=&store};pc_cloud_init(&cloud,&store,&state,crypto,&store,transport,&m);cloud.monotonic_ms=clock_ms;cloud.clock_context=&m;
  CHECK(pc_cloud_origin_valid("https://example.test"));CHECK(!pc_cloud_origin_valid("http://example.test"));CHECK(!pc_cloud_origin_valid("https://user@example.test"));CHECK(!pc_cloud_origin_valid("https://example.test/path"));CHECK(!pc_cloud_uuid("bad"));
+ cloud.transport_alloc=deferred_transport;
+ CHECK(pc_cloud_runtime(&cloud,0,NULL)==PC_CLOUD_OK&&cloud.personal.valid);
+ m.timeout=true;CHECK(pc_cloud_runtime(&cloud,0,NULL)==PC_CLOUD_TRANSPORT);m.timeout=false;
+ m.too_large=true;CHECK(pc_cloud_runtime(&cloud,0,NULL)==PC_CLOUD_TRANSPORT);m.too_large=false;
+ cloud.transport_alloc=deferred_no_buffer;CHECK(pc_cloud_runtime(&cloud,0,NULL)==PC_CLOUD_TRANSPORT);
+ cloud.transport_alloc=NULL;
  CHECK(pc_cloud_runtime(&cloud,0,NULL)==PC_CLOUD_OK&&state.host_active&&cloud.clock_known&&cloud.active_title_valid);m.corrupt=true;CHECK(pc_cloud_runtime(&cloud,0,NULL)==PC_CLOUD_INVALID);m.corrupt=false;m.wrong_recipient=true;CHECK(pc_cloud_runtime(&cloud,0,NULL)==PC_CLOUD_INVALID);m.wrong_recipient=false;m.malformed=1;CHECK(pc_cloud_runtime(&cloud,0,NULL)==PC_CLOUD_INVALID);m.malformed=0;m.too_large=true;CHECK(pc_cloud_runtime(&cloud,0,NULL)==PC_CLOUD_TRANSPORT);m.too_large=false;
  m.malformed=13;CHECK(pc_cloud_runtime(&cloud,0,NULL)==PC_CLOUD_INVALID);m.malformed=0;
  for(int invalid=9;invalid<=10;invalid++){m.malformed=invalid;CHECK(pc_cloud_runtime(&cloud,0,NULL)==PC_CLOUD_INVALID);}m.malformed=0;
@@ -87,6 +100,8 @@ int main(int argc,char **argv){assert(argc==2);FILE *file=fopen(argv[1],"rb");as
  for(int invalid=11;invalid<=12;invalid++){m.malformed=invalid;CHECK(pc_cloud_host_candidate(&cloud,activity,&selected,&candidate)==PC_CLOUD_INVALID&&!memcmp(&candidate,&retained_candidate,sizeof(candidate)));}m.malformed=0;
  CHECK(!pc_presence_observe(&nearby,&observation,device,5100,-65)&&nearby_count(&nearby,5100)==0);
  observation.seen_ms=5200;CHECK(pc_presence_observe(&nearby,&observation,device,5200,-65));int old_selection=nearby.selected;observation.device_id[15]=0x78;CHECK(pc_presence_observe(&nearby,&observation,device,5200,-65)&&nearby_count(&nearby,5200)==2);
+ CHECK(nearby_host_count(&nearby,5200)==0);nearby.entries[old_selection].host_eligible=true;nearby.entries[old_selection].host_checked_ms=5200;CHECK(nearby_host_count(&nearby,5200)==1);CHECK(nearby_host_count(&nearby,10200)==0);
+ nearby.entries[old_selection].checked_in=true;CHECK(nearby_count(&nearby,5200)==1&&nearby_host_count(&nearby,5200)==1);CHECK(!nearby_selected(&nearby,5200,&selected));CHECK(nearby_prune_checked_selection(&nearby,5200)&&nearby.selected!=old_selection);nearby.entries[nearby.selected].checked_in=true;CHECK(nearby_prune_checked_selection(&nearby,5200)&&nearby.selected==-1);CHECK(!nearby_prune_checked_selection(&nearby,5200));for(unsigned k=0;k<NEARBY_CAPACITY;k++)nearby.entries[k].checked_in=false;nearby.selected=old_selection;
  CHECK(nearby_move(&nearby,1,5200)&&nearby.selected!=old_selection&&nearby_count(&nearby,5200)==2);CHECK(nearby_move(&nearby,-1,5200)&&nearby.selected==old_selection&&nearby_count(&nearby,5200)==2);
  observation.device_id[15]=0x77;observation.rssi=-80;CHECK(!pc_presence_observe(&nearby,&observation,device,5200,-65)&&nearby_count(&nearby,5200)==1);CHECK(nearby.entries[old_selection].device_id[15]==0x77&&!nearby_selected(&nearby,5200,&selected));
  pc_roster_page roster={0};CHECK(!strcmp(cloud.active_activity_id,activity));
@@ -110,10 +125,10 @@ int main(int argc,char **argv){assert(argc==2);FILE *file=fopen(argv[1],"rb");as
  app_services_bind(&store);network_profiles_t profiles={.version=1};network_profile_t home={.ssid="home",.password="12345678"},work={.ssid="work",.password="new-password"};CHECK(network_profiles_promote(&profiles,&home));CHECK(app_save_networks(&profiles));CHECK(pc_store_load(&reload)==ESP_OK&&reload.data.wifi_count==1&&!strcmp(reload.data.wifi[0].ssid,"home"));CHECK(network_profiles_promote(&profiles,&work));set_error=ESP_FAIL;CHECK(!app_save_networks(&profiles)&&store.data.wifi_count==1);set_error=ESP_OK;CHECK(app_save_networks(&profiles));network_profiles_t restored;CHECK(app_load_networks(&restored)&&restored.count==2&&!strcmp(restored.profiles[1].ssid,"home"));
 
  for(unsigned i=0;i<6;i++){network_profile_t p={.password="12345678"};snprintf(p.ssid,sizeof(p.ssid),"saved-%u",i);CHECK(network_profiles_promote(&profiles,&p));}CHECK(profiles.count==5&&!strcmp(profiles.profiles[0].ssid,"saved-5")&&!strcmp(profiles.profiles[4].ssid,"saved-1"));CHECK(app_save_networks(&profiles));CHECK(pc_store_load(&reload)==ESP_OK&&reload.data.wifi_count==5&&!strcmp(reload.data.wifi[4].ssid,"saved-1"));
- d=store.data;d.member_id[0]=0;d.hello_skipped=false;CHECK(pc_store_commit(&store,&d)==ESP_OK);pc_init(&state,false,false);pc_startup startup;pc_startup_init(&startup,&cloud);m.enrollment=1;m.ms=0;CHECK(pc_startup_poll(&startup,100)==PC_CLOUD_OK&&startup.phase==PC_BIND_WAITING&&state.page==PC_BIND);CHECK(!strcmp(startup.claim_code,"1234"));CHECK(pc_press(&state,PC_POWER,false,101)==PC_NONE&&!state.help);
- m.enrollment=2;CHECK(pc_startup_poll(&startup,200)==PC_CLOUD_OK&&startup.phase==PC_BIND_CONFIRM&&startup.member_label_bitmap_valid);before=m.requests;CHECK(pc_startup_confirm(&startup,true,199)==PC_CLOUD_INVALID&&m.requests==before);m.confirm_timeout=true;CHECK(pc_startup_confirm(&startup,true,210)==PC_CLOUD_TRANSPORT&&startup.phase==PC_BIND_CHECKING);m.confirm_timeout=false;set_error=ESP_FAIL;CHECK(pc_startup_poll(&startup,211)==PC_CLOUD_STORAGE&&startup.phase==PC_BIND_STORAGE_ERROR&&!store.data.member_id[0]);set_error=ESP_OK;CHECK(pc_startup_poll(&startup,212)==PC_CLOUD_OK&&!strcmp(store.data.member_id,member));pc_tick(&state,512);CHECK(state.page==PC_BOUND);pc_press(&state,PC_OK,false,513);pc_tick(&state,813);CHECK(state.page==PC_PLANET);
+ d=store.data;d.member_id[0]=0;d.hello_skipped=false;CHECK(pc_store_commit(&store,&d)==ESP_OK);pc_init(&state,false,false);pc_startup startup;pc_startup_init(&startup,&cloud);m.enrollment=1;m.ms=0;CHECK(pc_startup_poll(&startup,100)==PC_CLOUD_OK&&startup.phase==PC_BIND_WAITING&&state.page==PC_BIND);CHECK(!strcmp(startup.claim_code,"1234"));CHECK(startup.valid_seconds>0);CHECK(pc_press(&state,PC_POWER,false,101)==PC_NONE&&!state.help);
+ m.enrollment=2;CHECK(pc_startup_poll(&startup,200)==PC_CLOUD_OK&&startup.phase==PC_BIND_CONFIRM&&startup.member_label_bitmap_valid);m.malformed=15;CHECK(pc_startup_poll(&startup,200)==PC_CLOUD_OK&&startup.phase==PC_BIND_CONFIRM&&!startup.member_label_bitmap_valid&&startup.member_label[0]);m.malformed=0;before=m.requests;CHECK(pc_startup_confirm(&startup,true,199)==PC_CLOUD_INVALID&&m.requests==before);m.confirm_timeout=true;CHECK(pc_startup_confirm(&startup,true,210)==PC_CLOUD_TRANSPORT&&startup.phase==PC_BIND_CHECKING);m.confirm_timeout=false;set_error=ESP_FAIL;CHECK(pc_startup_poll(&startup,211)==PC_CLOUD_STORAGE&&startup.phase==PC_BIND_STORAGE_ERROR&&!store.data.member_id[0]);set_error=ESP_OK;CHECK(pc_startup_poll(&startup,212)==PC_CLOUD_OK&&!strcmp(store.data.member_id,member));pc_tick(&state,512);CHECK(state.page==PC_BOUND);pc_press(&state,PC_OK,false,513);pc_tick(&state,813);CHECK(state.page==PC_HELLO);
  pc_init(&state,false,true);CHECK(pc_startup_poll(&startup,900)==PC_CLOUD_OK);pc_tick(&state,1200);CHECK(state.page==PC_HELLO);state.host_active=true;CHECK(pc_startup_poll(&startup,1201)==PC_CLOUD_OK&&state.host_active);
- d=store.data;d.member_id[0]=0;CHECK(pc_store_commit(&store,&d)==ESP_OK);pc_init(&state,false,false);pc_startup_init(&startup,&cloud);m.enrollment=2;CHECK(pc_startup_poll(&startup,1300)==PC_CLOUD_OK);CHECK(pc_startup_confirm(&startup,false,1301)==PC_CLOUD_OK&&startup.phase==PC_BIND_WAITING&&!store.data.member_id[0]);m.enrollment=4;CHECK(pc_startup_poll(&startup,1302)==PC_CLOUD_OK&&startup.phase==PC_BIND_REVOKED&&state.page==PC_BIND);
+ d=store.data;d.member_id[0]=0;CHECK(pc_store_commit(&store,&d)==ESP_OK);pc_init(&state,false,false);pc_startup_init(&startup,&cloud);m.enrollment=2;CHECK(pc_startup_poll(&startup,1300)==PC_CLOUD_OK);CHECK(pc_startup_confirm(&startup,false,1301)==PC_CLOUD_OK&&startup.phase==PC_BIND_REJECTED&&!store.data.member_id[0]);m.enrollment=4;CHECK(pc_startup_poll(&startup,1302)==PC_CLOUD_OK&&startup.phase==PC_BIND_REVOKED&&state.page==PC_BIND);
 
  /* Durable recovery: timeout never invents success; retry keeps its ID until acknowledged. */
  CHECK(pc_store_pending_clear(&store,0,batch)==ESP_OK);CHECK(pc_store_pending_clear(&store,1,unknown.operation_id)==ESP_OK);
@@ -154,22 +169,26 @@ int main(int argc,char **argv){assert(argc==2);FILE *file=fopen(argv[1],"rb");as
  m.single_saved=false;CHECK(pc_single_begin(&single,"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",activity,&single_peer,6000)==PC_CLOUD_BUSY);
 
 
- /* Lost request is replayed with the same intent/ID, never with a different nearby member. */
+ /* Only explicit retry can replay an unknown request; never change the intent/ID. */
  m.single_not_delivered=true;m.single_timeout=true;CHECK(pc_single_begin(&single,"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",activity,&single_peer,0)==PC_CLOUD_TRANSPORT);
- requests_before=m.requests;CHECK(pc_single_recover(&single,NULL,1)==PC_CLOUD_BUSY&&single.loaded&&m.requests==requests_before+1);
- nearby_participant_t wrong_peer=single_peer;wrong_peer.device_id[15]=0x78;CHECK(pc_single_recover(&single,&wrong_peer,2)==PC_CLOUD_BUSY&&single.loaded);
- m.single_timeout=false;requests_before=m.requests;CHECK(pc_single_recover(&single,&single_peer,3)==PC_CLOUD_OK&&!single.loaded&&m.requests==requests_before+2);
+ requests_before=m.requests;CHECK(pc_single_recover(&single,NULL,1)==PC_CLOUD_OK&&single.loaded&&!state.unresolved&&state.page==PC_SINGLE_FAILED&&m.requests==requests_before+1);
+ nearby_participant_t wrong_peer=single_peer;wrong_peer.device_id[15]=0x78;CHECK(pc_single_retry(&single,&wrong_peer,2)==PC_CLOUD_BUSY&&single.loaded);
+ m.single_timeout=false;requests_before=m.requests;CHECK(pc_single_retry(&single,&single_peer,3)==PC_CLOUD_OK&&!single.loaded&&m.requests==requests_before+1);
  m.single_timeout=true;CHECK(pc_single_begin(&single,"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",activity,&single_peer,0)==PC_CLOUD_TRANSPORT);
  m.runtime_closed=true;CHECK(pc_cloud_runtime(&cloud,5,activity)==PC_CLOUD_OK&&cloud.known_activity_closed&&!state.host_active);
  CHECK(pc_single_recover(&single,NULL,6)==PC_CLOUD_OK&&!single.loaded&&!state.unresolved);pc_tick(&state,306);CHECK(state.page==PC_PLANET);m.runtime_closed=false;m.single_timeout=false;
+ pc_facts(&state,true,true,true,0);state.unresolved=false;strcpy(cloud.active_activity_id,activity);cloud.server_ms=0;cloud.known_activity_closed=false;
+ m.single_timeout=true;CHECK(pc_single_begin(&single,"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",activity,&single_peer,0)==PC_CLOUD_TRANSPORT);
+ CHECK(pc_single_recover(&single,NULL,1)==PC_CLOUD_OK&&!state.unresolved);
+ CHECK(pc_single_abandon(&single,2)==PC_CLOUD_OK&&!single.loaded);pc_tick(&state,302);CHECK(state.page==PC_HOST);m.single_timeout=false;
  pc_friend_session friend_session={0};CHECK(pc_friend_request(&cloud,&friend_session)==PC_CLOUD_OK&&!strcmp(friend_session.state,"searching"));CHECK(pc_friend_poll(&cloud,&friend_session)==PC_CLOUD_OK&&!strcmp(friend_session.state,"searching"));
  m.corrupt=true;CHECK(pc_friend_poll(&cloud,&friend_session)==PC_CLOUD_INVALID&&!strcmp(friend_session.state,"searching"));m.corrupt=false;
 
  m.friend_waiting=true;CHECK(pc_friend_poll(&cloud,&friend_session)==PC_CLOUD_OK&&strlen(friend_session.code)==4);
  pc_facts(&state,true,true,false,10);state.unresolved=false;
- pc_friend_flow flow={0};pc_friend_flow_update(&flow,&friend_session,100);pc_friend_flow_tick(&flow,10099);CHECK(!flow.timed_out);pc_friend_flow_tick(&flow,10100);CHECK(flow.timed_out);
+ pc_friend_flow flow={0};pc_friend_flow_update(&flow,&friend_session,100);pc_friend_flow_visible(&flow,friend_session.interaction_id,friend_session.code,100);pc_friend_flow_tick(&flow,10099);CHECK(!flow.timed_out);pc_friend_flow_tick(&flow,10100);CHECK(flow.timed_out);
  pc_friend_flow_update(&flow,&friend_session,10200);CHECK(flow.timed_out&&flow.shown_ms==100);
- pc_friend_session fresh_session=friend_session;fresh_session.code[0]=fresh_session.code[0]=='0'?'1':'0';pc_friend_flow_update(&flow,&fresh_session,10300);CHECK(!flow.timed_out&&flow.shown_ms==10300);
+ pc_friend_session fresh_session=friend_session;fresh_session.code[0]=fresh_session.code[0]=='0'?'1':'0';pc_friend_flow_update(&flow,&fresh_session,10300);CHECK(!flow.timed_out&&flow.shown_ms==10300);pc_friend_flow_tick(&flow,30300);CHECK(!flow.timed_out);pc_friend_flow_visible(&flow,fresh_session.interaction_id,fresh_session.code,30300);CHECK(pc_friend_flow_accepts_key(&flow,fresh_session.interaction_id,fresh_session.code,40299));pc_friend_flow_tick(&flow,40300);CHECK(flow.timed_out&&pc_friend_flow_accepts_key(&flow,fresh_session.interaction_id,fresh_session.code,40299));CHECK(!pc_friend_flow_accepts_key(&flow,fresh_session.interaction_id,fresh_session.code,40300));CHECK(!pc_friend_flow_accepts_key(&flow,fresh_session.interaction_id,"0000",30301));
  pc_friend_session expired={0};strcpy(expired.state,"idle");
  pc_friend_flow_update(&flow,&expired,10400);CHECK(flow.timed_out&&!strcmp(flow.session.code,fresh_session.code)&&flow.active);
  CHECK(friend_session.visual.valid&&!friend_session.visual.self.fallback&&!friend_session.visual.peer.fallback&&friend_session.visual.self.hair_length==PC_HAIR_LONG&&friend_session.visual.peer.hair_length==PC_HAIR_SHORT&&friend_session.visual.self.hair_rgb==0x1806&&friend_session.visual.peer.hair_rgb==0xaa45);
@@ -204,5 +223,13 @@ int main(int argc,char **argv){assert(argc==2);FILE *file=fopen(argv[1],"rb");as
  CHECK(pc_identity_apply(&store,setup,"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","112233445566")==PC_CLOUD_OK&&!strcmp(store.data.device_id,device)&&store.data.wifi_count==5);
  CHECK(pc_store_load(&reload)==ESP_OK&&!strcmp(reload.data.device_id,device));
  CHECK(pc_identity_apply(&store,setup,"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","112233445566")==PC_CLOUD_BUSY);
+ /* Signed reset clears this app only; invalid signature/write failure preserve the exact old record. */
+ d=store.data;memset(d.device_token,'a',64);strcpy(d.member_id,member);d.wifi_count=1;strcpy(d.wifi[0].ssid,"private-test");strcpy(d.wifi[0].password,"test-secret");d.hello_skipped=true;d.palette=2;d.planet_revision=42;CHECK(pc_store_commit(&store,&d)==ESP_OK);
+ pc_startup_init(&startup,&cloud);m.enrollment=5;m.corrupt=true;CHECK(pc_startup_poll(&startup,2000)==PC_CLOUD_INVALID&&!startup.reset_ready&&!memcmp(&store.data,&d,sizeof(d)));m.corrupt=false;
+ set_error=ESP_FAIL;CHECK(pc_startup_poll(&startup,2001)==PC_CLOUD_STORAGE&&!startup.reset_ready&&!memcmp(&store.data,&d,sizeof(d)));set_error=ESP_OK;
+ CHECK(pc_startup_poll(&startup,2002)==PC_CLOUD_OK&&startup.reset_ready);
+ CHECK(!store.data.member_id[0]&&!store.data.wifi_count&&!store.data.hello_skipped&&!store.data.planet_revision);
+ CHECK(strcmp(store.data.device_id,device)&&strlen(store.data.device_token)==64&&!strcmp(store.data.server_origin,d.server_origin));
+ pc_store reloaded;CHECK(pc_store_load(&reloaded)==ESP_OK&&!memcmp(&reloaded.data,&store.data,sizeof(store.data)));
  cJSON_Delete(vectors);printf("cloud/startup protocol: %u assertions passed against actual backend signatures and responses\n",checks);
 }

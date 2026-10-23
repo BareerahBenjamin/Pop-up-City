@@ -22,6 +22,12 @@ esp_err_t pc_identity_wait_usb(pc_store *store){
   for(int i=0;i<count;i++){
    if(input[i]=='\n'){
     line[used]=0;
+    /* USB may retain old READY output across reset. Echo a fresh host challenge
+       so the host can bind provisioning to this running boot, not queued output. */
+    if(!overflow&&used==46&&!strncmp(line,"PC_INIT_HELLO ",14)){
+     bool valid=true;for(unsigned j=14;j<46;j++)if(!((line[j]>='a'&&line[j]<='f')||(line[j]>='0'&&line[j]<='9')))valid=false;
+     if(valid){printf("\nPC_INIT_CHALLENGE %s %s %s\n",line+14,nonce,board);fflush(stdout);}
+    }
     if(!overflow&&used>8&&!strncmp(line,"PC_INIT ",8)){
      pc_cloud_result result=pc_identity_apply(store,line+8,nonce,board);memset(line,0,sizeof(line));used=0;
      if(result==PC_CLOUD_OK){printf("\nPC_INIT_OK %s\n",store->data.device_id);fflush(stdout);return ESP_OK;}

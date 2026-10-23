@@ -16,11 +16,18 @@ class Link:
     def __init__(self, **unused):
         self.lines=[b'PC_INIT_READY '+b'a'*32+b' 112233445566\n',('PC_INIT_OK '+DEVICE+'\n').encode()]
         self.sent=[]
+        self.buffer_cleared=False
     def open(self):pass
+    def reset_input_buffer(self):self.buffer_cleared=True
     def close(self):pass
     def flush(self):pass
     def readline(self,unused):return self.lines.pop(0) if self.lines else b''
-    def write(self,value):self.sent.append(value)
+    def write(self,value):
+        self.sent.append(value)
+        if value.startswith(b'PC_INIT_HELLO '):
+            request=value.split()[1]
+            self.lines.insert(1,b'PC_INIT_CHALLENGE '+b'0'*32+b' '+b'b'*32+b' 112233445566\n')
+            self.lines.insert(2,b'PC_INIT_CHALLENGE '+request+b' '+b'a'*32+b' 112233445566\n')
 
 class Response:
     def __init__(self,value):self.value=value
@@ -44,15 +51,15 @@ class Initialization(unittest.TestCase):
         with patch.dict(sys.modules,{'serial':types.SimpleNamespace(Serial=lambda **kw:self.link)}),patch.object(module.urllib.request,'build_opener',return_value=types.SimpleNamespace(open=open_request)):
             module.initialize('TEST',self.profile,self.identity)
     def test_registered_identity_sent_only_after_verified_response(self):
-        self.run_tool();self.assertEqual(len(self.link.sent),1)
-        command=json.loads(self.link.sent[0][8:]);self.assertEqual(command['device_token'],'a'*64);self.assertEqual(command['nonce'],'a'*32)
+        self.run_tool();self.assertTrue(self.link.buffer_cleared);self.assertEqual(len(self.link.sent),2)
+        command=json.loads(self.link.sent[1][8:]);self.assertEqual(command['device_token'],'a'*64);self.assertEqual(command['nonce'],'a'*32)
     def test_other_board_cannot_clone_file(self):
         saved=json.loads(self.identity.read_text());saved['board_uid']='665544332211';self.identity.write_text(json.dumps(saved))
         with self.assertRaises(ValueError):self.run_tool()
-        self.assertEqual(self.calls,0);self.assertEqual(self.link.sent,[])
+        self.assertEqual(self.calls,0);self.assertEqual(len(self.link.sent),1);self.assertTrue(self.link.sent[0].startswith(b'PC_INIT_HELLO '))
     def test_bad_signature_never_reaches_board(self):
         self.response={**self.response,'signature':'0'*64}
         with self.assertRaises(ValueError):self.run_tool()
-        self.assertEqual(self.link.sent,[])
+        self.assertEqual(len(self.link.sent),1);self.assertTrue(self.link.sent[0].startswith(b'PC_INIT_HELLO '))
 
 if __name__=='__main__':unittest.main()

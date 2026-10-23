@@ -15,3 +15,5 @@ bool pc_personal_visual_decode(const cJSON *runtime,pc_personal_visual *out);
 /* UI-owned strip overlay. Output native RGB565; frame RAM is never allocated. */
 void pc_personal_planet_overlay(const pc_personal_visual *,uint32_t elapsed_ms,unsigned row,unsigned rows,uint16_t *pixels);
 void pc_personal_name_overlay(const pc_personal_visual *,uint32_t elapsed_ms,unsigned row,unsigned rows,uint16_t *pixels);
+
+void pc_personal_planet_at(const pc_personal_visual *,uint32_t,unsigned,unsigned,uint16_t *,int,int,unsigned);

@@ -24,11 +24,24 @@ def package(build, output):
     if acceptance.get('version') != description.get('project_version') or any(acceptance.get(k) is not True for k in required):
         raise ValueError('Product integration gates are incomplete or version does not match')
     subprocess.run([sys.executable, str(ROOT / 'tools/validate_event_app.py'), '--build-dir', str(build)], check=True)
+    # The CMake description can advance even when compilation fails. Never
+    # label an old application image as the new project version.
+    application = (build / 'FoloToy-AI-Passport.bin').read_bytes()
+    if len(application) < 80 or int.from_bytes(application[32:36], 'little') != 0xABCD5432:
+        raise ValueError('Missing ESP-IDF application descriptor')
+    binary_version = application[48:80].split(b'\0', 1)[0].decode('ascii')
+    if binary_version != description.get('project_version'):
+        raise ValueError('Application binary version does not match successful build metadata')
     if output.exists():
         raise ValueError('Output already exists; do not replace an existing release')
     with tempfile.TemporaryDirectory(prefix='popcity-package-') as temporary:
         stage = Path(temporary)
-        sources = {'full.bin': build / 'FoloToy-AI-Passport-full.bin',
+        sources = {'FONT_LICENSE.txt': ROOT.parent / 'assets/fonts/OFL.txt',
+                   'PIXEL_FONT_LICENSE.txt': ROOT.parent / 'assets/fonts/PIXEL_FONT_LICENSE.txt',
+                   'cjk-font.json': ROOT / 'main/generated/cjk_font.json',
+                   'legacy-provenance.json': ROOT / 'legacy-provenance.json',
+                   'product-readiness.json': ROOT / 'product-readiness.json',
+                   'full.bin': build / 'FoloToy-AI-Passport-full.bin',
                    'application.bin': build / 'FoloToy-AI-Passport.bin',
                    'bootloader.bin': build / 'bootloader/bootloader.bin',
                    'partition-table.bin': build / 'partition_table/partition-table.bin',
@@ -48,7 +61,8 @@ def package(build, output):
         # Never sweep this directory: initialization creates private per-board
         # files beside tools, which must not enter a release or replace manifest.
         for name in ['flash.py', 'initialize.py', 'setup.sh', 'setup.ps1',
-                     'requirements.txt', 'README.md', 'README.zh_CN.md']:
+                     'requirements.txt', 'README.md', 'README.zh_CN.md',
+                     'DESIGN_REFERENCE.zh_CN.md', 'design-source.json']:
             source = ROOT / 'portable' / name
             if source.is_symlink() or not source.is_file():
                 raise ValueError('Missing or unsafe portable tool: ' + name)

@@ -1,4 +1,5 @@
 #include "proximity.h"
+#include "cjk_name.h"
 #include "cloud_internal.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,8 +41,13 @@ pc_cloud_result pc_cloud_host_candidate(pc_cloud *c,const char *activity,const n
  pc_cloud_result result=pc_cloud_call(c,false,"/local/host/nearby",body,&r);cJSON_Delete(body);if(result!=PC_CLOUD_OK)return result;
  const char *id=field(r,"user_device_id"),*event=field(r,"activity_id"),*tag=field(r,"presence_tag"),*label=field(r,"user_label"),*bitmap=field(r,"name_bitmap");
  bool valid=id&&!strcmp(id,device)&&event&&!strcmp(event,activity)&&tag&&!strcmp(tag,peer->presence_tag)&&label&&strlen(label)<129&&bitmap&&strlen(bitmap)==1536;
- pc_host_candidate candidate={0};
+ pc_host_candidate candidate={0};candidate.signed_in=cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(r,"signed_in"));candidate.signed_status_known=cJSON_IsBool(cJSON_GetObjectItemCaseSensitive(r,"signed_in"));
  if(valid)for(unsigned i=0;i<768;i++){int high=hex(bitmap[i*2]),low=hex(bitmap[i*2+1]);if(high<0||low<0){valid=false;break;}candidate.name_bitmap[i]=(uint8_t)((high<<4)|low);}
+
+#ifdef ESP_PLATFORM
+ const char *style=field(r,"name_bitmap_style");
+ if(valid&&(!style||strcmp(style,PC_NAME_BITMAP_STYLE)))valid=pc_pixel_name_local(label,candidate.name_bitmap,sizeof(candidate.name_bitmap),192,32,1,true,true);
+#endif
  if(valid){memcpy(candidate.device_id,id,37);strcpy(candidate.label,label);*out=candidate;}
  cJSON_Delete(r);return valid?PC_CLOUD_OK:PC_CLOUD_INVALID;
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include "esp_err.h"
 #include "network_profiles.h"
+#include "network_status.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -23,3 +24,9 @@ bool network_setup_forget(void);
 const char *network_setup_summary(void);
 
 bool network_reconnecting_saved(void);
+
+pc_wifi_status network_status(void);
+bool network_clock_ready(void);
+/* Only retries a failed local save; never restarts an active radio operation. */
+void network_retry_save(void);
+void network_setup_retry(void);

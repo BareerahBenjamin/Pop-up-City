@@ -14,7 +14,9 @@ void pc_single_init(pc_single_controller *s,pc_cloud *c){
 }
 static pc_cloud_result finish(pc_single_controller *s,uint32_t ms){
  pc_cloud *c=s->cloud;const char *id=c->store->data.pending[s->slot].operation_id;
+ char peer[37],activity[37];memcpy(peer,c->store->data.pending[s->slot].peer_device_id,37);memcpy(activity,c->store->data.pending[s->slot].activity_id,37);
  if(pc_store_pending_clear(c->store,s->slot,id)!=ESP_OK)return PC_CLOUD_STORAGE;
+ memcpy(s->completed_peer,peer,37);memcpy(s->completed_activity,activity,37);
  s->loaded=false;
  bool remaining=false;for(unsigned i=0;i<PC_PENDING_OPERATIONS;i++)remaining|=c->store->data.pending[i].kind!=0;
  if(remaining){c->state->unresolved=true;c->state->page=PC_RECONCILE;}else pc_resolved(c->state,PC_SINGLE_SUCCESS,ms);
@@ -45,7 +47,7 @@ static pc_cloud_result retire(pc_single_controller *s,uint32_t ms){
   else if(!strcmp(state,"saved")&&receipt(saved,op))result=finish(s,ms);
   else if(!strcmp(state,"cancelled")&&field(saved,"status")&&!strcmp(field(saved,"status"),"cancelled")&&field(saved,"interaction_id")&&!strcmp(field(saved,"interaction_id"),op->operation_id)){
    if(pc_store_pending_clear(c->store,s->slot,op->operation_id)!=ESP_OK)result=PC_CLOUD_STORAGE;
-   else {s->loaded=false;pc_resolved(c->state,PC_PLANET,ms);}
+   else {s->loaded=false;pc_resolved(c->state,c->state->host_active?PC_HOST:PC_PLANET,ms);}
   }else result=PC_CLOUD_INVALID;
  }
  cJSON_Delete(r);return result;
@@ -73,9 +75,22 @@ pc_cloud_result pc_single_recover(pc_single_controller *s,const nearby_participa
  if(c->known_activity_closed&&!strcmp(c->known_activity_id,original->activity_id)){
   return retire(s,ms);
  }
+ /* Authoritative unknown means not saved, but retry still requires user OK.
+  * Keep the durable ID until success/cancellation, never automatically resubmit. */
+ c->state->unresolved=false;c->state->page=PC_SINGLE_FAILED;
+ (void)peer;return PC_CLOUD_OK;
+}
+pc_cloud_result pc_single_retry(pc_single_controller *s,const nearby_participant_t *peer,uint32_t ms){
+ pc_cloud *c=s->cloud;if(!s->loaded||c->state->unresolved||!c->state->online||!c->state->bound)return PC_CLOUD_BUSY;
+ const pc_pending_operation *original=&c->store->data.pending[s->slot];
  if(!c->state->host_active||strcmp(c->active_activity_id,original->activity_id)||!fresh_peer(c,peer,ms))return PC_CLOUD_BUSY;
  char id[37];pc_device_uuid(peer->device_id,id);if(strcmp(id,original->peer_device_id))return PC_CLOUD_BUSY;
  pc_personal_data next=c->store->data;pc_pending_operation *op=&next.pending[s->slot];op->detail.single.epoch=peer->presence_epoch;memcpy(op->detail.single.tag,peer->presence_tag,13);op->occurred_at=c->server_time+(uint32_t)(ms-c->server_ms)/1000;
  if(pc_store_commit(c->store,&next)!=ESP_OK)return PC_CLOUD_STORAGE;
  return submit(s,ms);
+}
+
+pc_cloud_result pc_single_abandon(pc_single_controller *s,uint32_t ms){
+ if(!s||!s->loaded||s->cloud->state->unresolved||!s->cloud->state->online||!s->cloud->state->bound)return PC_CLOUD_BUSY;
+ return retire(s,ms);
 }

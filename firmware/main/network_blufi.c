@@ -37,6 +37,20 @@ static int access(uint16_t connection,uint16_t attribute,struct ble_gatt_access_
     if(length<4||length>512)return BLE_ATT_ERR_INVALID_ATTR_VALUE_LEN;
     uint8_t packet[512];uint16_t copied=0;
     if(ble_hs_mbuf_to_flat(context->om,packet,sizeof(packet),&copied)!=0)return BLE_ATT_ERR_INSUFFICIENT_RES;
+    if(!blufi_packet_allowed(packet,copied,passport_blufi_security_ready())){
+        memset(packet,0,sizeof(packet));return BLE_ATT_ERR_INSUFFICIENT_AUTHOR;
+    }
+    /* Bound the SDK fragment allocation after decrypting in place. AES-CFB uses
+     * a fresh per-frame IV; SDK still owns sequence/CRC/reassembly validation. */
+    if((packet[1]&0x10u)&&(packet[1]&1u)){
+        if(passport_blufi_decrypt(packet[2],packet+4,packet[3])!=packet[3]){
+            memset(packet,0,sizeof(packet));return BLE_ATT_ERR_INSUFFICIENT_AUTHOR;
+        }
+        packet[1]&=(uint8_t)~1u; /* Already decrypted once; do not decrypt twice in SDK. */
+    }
+    if(!blufi_fragment_allowed(packet,copied)){
+        memset(packet,0,sizeof(packet));return BLE_ATT_ERR_INVALID_ATTR_VALUE_LEN;
+    }
     btc_blufi_recv_handler(packet,copied);memset(packet,0,sizeof(packet));return 0;
 }
 /* Use bounded writes directly, avoiding the SDK example's one-byte value

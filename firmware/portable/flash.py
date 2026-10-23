@@ -110,7 +110,10 @@ def main():
     # A subprocess receives a fixed argument array; user input is never interpreted by a shell.
     command = [sys.executable, '-m', 'esptool', '--chip', 'esp32c3', '--port', args.port,
                '--baud', '460800', '--before', 'default_reset', '--after', 'hard_reset',
-               'write_flash', '--flash_size', '8MB', '0x0', str(root / 'full.bin')]
+               'write_flash', '--flash_size', '8MB',
+               '0x0', str(root / 'bootloader.bin'),
+               '0x8000', str(root / 'partition-table.bin'),
+               '0x10000', str(root / 'application.bin')]
     return subprocess.call(command)
 
 

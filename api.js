@@ -1,12 +1,10 @@
-import { notificationRoute } from './hardware-cloud/notifications.mjs';
-import { hostBatchRoute } from './hardware-cloud/host-batches.mjs';
-import { runtimeRoute } from './hardware-cloud/runtime.mjs';
-import { enrollmentRoute, enrollmentAdminRoute } from './device-enrollment.js';
-import { cloudRoute, cloudAdminRoute } from './hardware-cloud.js';
+import {eventMaterialsRoute} from './event-materials.js';
+import {eventHostsRoute} from './event-hosts.js';
 import { PlanetGrowthError, growthTransaction, activatePlanetGrowth, configurePlanetEvent, reviewPlanetRole, correctPlanetFact, planetGrowthAdmin } from './planet-growth.js';
 import { planetSnapshot, planetSnapshotInTransaction, planetDocument, completePlanetOnboarding, loginDestination } from './planet.js';
 import { validFinalAvatar } from './profile.js';
-import { hardwareRoute, hardwareAdminRoute, HardwareError } from './hardware.js';
+import {HardwareError} from './hardware.js';
+import {deviceGateway,deviceAdminGateway,isDevicePath,DeviceApiError} from './hardware-interface/gateway.mjs';
 import { changeMemberRole } from './roles.js';
 import QRCode from 'qrcode';
 import { prepareCover, bodyLimit } from './covers.js';
@@ -88,13 +86,6 @@ async function memberFromCookie(request, env) {
 }
 const requireMember = user => user || fail(401, '请先登录');
 const requireAdmin = user => user?.role === 'admin' ? user : fail(403, '仅管理员可操作');
-async function deviceFromBearer(request, env) {
-  const token = /^Bearer ([a-f0-9]{64})$/.exec(request.headers.get('authorization') || '')?.[1];
-  if (!token) fail(401, '设备令牌无效');
-  const device = await first(env.DB, `SELECT d.*,m.nickname,m.bio,m.card_public,m.avatar_json,m.status FROM devices d JOIN members m ON m.id=d.member_id WHERE d.token_hash=? AND d.revoked_at IS NULL AND m.status!='disabled'`, await digest(token));
-  if (!device) fail(401, '设备令牌无效');
-  return device;
-}
 function profile(m, self = false) {
   const data = { id: m.id, nickname: m.nickname, bio: m.bio, skills: m.skills, needs: m.needs, avatar: JSON.parse(m.avatar_json || '{}') };
   if (self) Object.assign(data, { email: m.email, role: m.role, is_super_admin: Boolean(m.is_super_admin), status: m.status, card_public: Boolean(m.card_public), avatar_locked: m.profile_completed_at != null, profile_locked: false });
@@ -194,12 +185,14 @@ async function route(request, env) {
   if (method !== 'GET' && method !== 'HEAD' && !p.startsWith('/api/device/') && !p.startsWith('/local/') && !p.startsWith('/api/device-enrollment/')) {
     if (request.headers.get('origin') !== origin) fail(403, '请求来源不允许');
   }
-  if (p.startsWith('/api/device-enrollment/')) return enrollmentRoute(request,env,url,body);
-  if (p.startsWith('/local/')) return cloudRoute(request, env, url, await deviceFromBearer(request, env), body);
-  if (p.startsWith('/api/device/')) return deviceRoute(request, env, url);
+  if(isDevicePath(p))return deviceGateway(request,env,url);
   const user = await memberFromCookie(request, env);
   const requestedEvent = /^\/api\/events\/([a-f0-9-]{36})(?:\/|$)/.exec(p);
   if (requestedEvent && await first(env.DB, 'SELECT 1 FROM event_deletions WHERE event_id=?', requestedEvent[1])) fail(404, '活动已删除或不存在');
+  const materials=await eventMaterialsRoute(request,env,url,user);
+  if(materials)return materials;
+  const hosts=await eventHostsRoute(request,env,url,user,body);
+  if(hosts)return hosts;
   const gameJam = await gameJamRoute(request,env,user,body);
   if (gameJam) return gameJam;
   if (method === 'GET' && p === '/planet') {
@@ -478,12 +471,8 @@ async function adminRoute(request, env, url, user) {
       return result;
     }));
   }
-  const enrollment = await enrollmentAdminRoute(request,env,url,user,body);
-  if(enrollment)return enrollment;
-  const cloud = await cloudAdminRoute(request, env, url, user, body);
-  if (cloud) return cloud;
-  const hardware = await hardwareAdminRoute(request, env, url, user, body);
-  if (hardware) return hardware;
+  const deviceAdmin=await deviceAdminGateway(request,env,url,user);
+  if(deviceAdmin)return deviceAdmin;
   if (method === 'POST' && p === '/api/admin/members/import') {
     const rows = (await body(request)).members; if (!Array.isArray(rows) || rows.length < 1 || rows.length > 200) fail(400, '每次导入 1–200 位成员');
     const normalized = rows.map(x => ({ email: email(x.email), nickname: str(x.nickname, 20, '昵称') }));
@@ -568,54 +557,6 @@ async function adminRoute(request, env, url, user) {
   if (method === 'DELETE' && revoke) { await run(env.DB, 'UPDATE devices SET revoked_at=? WHERE id=?', now(), revoke[1]); return json({ ok: true }); }
   fail(404, '接口不存在');
 }
-async function deviceRoute(request, env, url) {
-  const d = await deviceFromBearer(request, env), p = url.pathname, method = request.method;
-  const feedback = await notificationRoute(request, env, url, d, body);
-  if (feedback) return feedback;
-  const runtime = await runtimeRoute(request, env, url, d);
-  if (runtime) return runtime;
-  const batch = await hostBatchRoute(request, env, url, d, body);
-  if (batch) return batch;
-  const hardware = await hardwareRoute(request, env, url, d, body);
-  if (hardware) return hardware;
-  if (method === 'GET' && p === '/api/device/me') return json({ member_id: d.member_id, nickname: d.nickname, bio: d.card_public ? d.bio : '', avatar: JSON.parse(d.avatar_json || '{}') });
-  if (method === 'GET' && p === '/api/device/events') return json({ events: await all(env.DB, `SELECT e.id,e.title,e.starts_at,e.ends_at,e.location FROM events e JOIN event_registrations r ON r.event_id=e.id WHERE r.member_id=? AND r.kind='attendee' AND e.status='published' AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=e.id) ORDER BY e.starts_at`, d.member_id) });
-  if (method === 'GET' && p === '/api/device/records') return json({ checkins: await all(env.DB, 'SELECT event_id,checked_at FROM checkins WHERE member_id=? ORDER BY checked_at DESC', d.member_id), connections: await connectionsFor(env.DB, d.member_id) });
-  if (method === 'POST' && p === '/api/device/checkins') {
-    const data = await body(request), eventId = str(data.event_id, 36, '活动 ID'), pin = str(data.pin, 6, '签到口令'), requestId = str(data.request_id, 80, '请求 ID');
-    const e = await first(env.DB, 'SELECT * FROM events WHERE id=? AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=events.id)', eventId), stamp = now();
-    if (!e || e.status !== 'published' || !e.venue_pin_hash || stamp < e.starts_at - 3600 || stamp >= e.starts_at) fail(409, '活动当前不可签到');
-    if (!await first(env.DB, "SELECT 1 FROM event_registrations WHERE event_id=? AND member_id=? AND kind='attendee'", eventId, d.member_id)) fail(403, '尚未报名此活动');
-    const failures = await first(env.DB, 'SELECT COUNT(*) n FROM device_failed_codes WHERE device_id=? AND attempted_at>?', d.id, stamp - 600);
-    if (failures.n >= 10) fail(429, '尝试次数过多，请稍后再试');
-    if (await mac(env.AUTH_PEPPER, `venue:${eventId}:${pin}`) !== e.venue_pin_hash) { await run(env.DB, 'INSERT INTO device_failed_codes VALUES(?,?)', d.id, stamp); fail(403, '签到口令不正确'); }
-    const snapshot=growthTransaction(env.DB,()=>{if(env.DB.raw.prepare('SELECT 1 FROM event_deletions WHERE event_id=?').get(eventId))fail(409,'活动已删除，不可签到');env.DB.raw.prepare('INSERT OR IGNORE INTO checkins VALUES(?,?,?,?,?)').run(eventId,d.member_id,d.id,stamp,requestId);return planetSnapshotInTransaction(env.DB,d.member_id);});
-    return json({ status: 'checked_in', event_id: eventId, planet_revision:snapshot.revision,growth_status:snapshot.integration.growthStatus });
-  }
-  if (method === 'POST' && p === '/api/device/social-code') {
-    await body(request); const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, '0');
-    await run(env.DB, 'INSERT INTO social_codes VALUES(?,?,?,NULL)', await mac(env.AUTH_PEPPER, `social:${code}`), d.member_id, now() + 300);
-    return json({ code, expires_at: now() + 300 });
-  }
-  if (method === 'POST' && p === '/api/device/connections') {
-    const data = await body(request), code = str(data.code, 6, '社交码'), requestId = str(data.request_id, 80, '请求 ID');
-    if (!/^\d{6}$/.test(code)) fail(400, '社交码不合法');
-    const stamp = now(), failures = await first(env.DB, 'SELECT COUNT(*) n FROM device_failed_codes WHERE device_id=? AND attempted_at>?', d.id, stamp - 600);
-    if (failures.n >= 10) fail(429, '尝试次数过多，请稍后再试');
-    const existing = await first(env.DB, 'SELECT c.id,m.nickname FROM connections c JOIN members m ON m.id=c.to_member_id WHERE c.device_id=? AND c.request_id=?', d.id, requestId);
-    if (existing) return json({ status: 'connected', connection_id: existing.id, nickname: existing.nickname, card: { nickname: existing.nickname } });
-    const hash = await mac(env.AUTH_PEPPER, `social:${code}`), target = await first(env.DB, 'SELECT * FROM social_codes WHERE code_hash=?', hash);
-    if (!target || target.used_at || target.expires_at <= stamp || target.member_id === d.member_id) {
-      await run(env.DB, 'INSERT INTO device_failed_codes VALUES(?,?)', d.id, stamp); fail(400, '社交码无效');
-    }
-    const used = await run(env.DB, 'UPDATE social_codes SET used_at=? WHERE code_hash=? AND used_at IS NULL AND expires_at>?', stamp, hash, stamp);
-    if (!used.meta.changes) fail(409, '社交码已使用');
-    const id = uid(); await run(env.DB, 'INSERT INTO connections VALUES(?,?,?,?,?,?)', id, d.member_id, target.member_id, d.id, stamp, requestId);
-    const m = await first(env.DB, 'SELECT nickname,bio,card_public FROM members WHERE id=?', target.member_id);
-    return json({ status: 'connected', connection_id: id, nickname: m.nickname, bio: m.card_public ? m.bio : '', card: { nickname: m.nickname, bio: m.card_public ? m.bio : '' } });
-  }
-  fail(404, '设备接口不存在');
-}
 export default {
   async fetch(request, env) {
     try {
@@ -628,7 +569,7 @@ export default {
       return new Response(response.body, { status: response.status, headers });
     } catch (error) {
       // 不把邮件、SQL 参数、令牌等写入共享主机日志。
-      const expected = error instanceof ApiError || error instanceof HardwareError || error instanceof PlanetGrowthError || error instanceof GameJamError;
+      const expected = error instanceof ApiError || error instanceof DeviceApiError || error instanceof HardwareError || error instanceof PlanetGrowthError || error instanceof GameJamError;
       if (!expected) console.error('活动 API 内部错误');
       return json({ error: expected ? error.message : '服务暂时不可用', ...(error instanceof HardwareError ? { code: error.code } : {}) }, expected ? error.status : 500);
     }

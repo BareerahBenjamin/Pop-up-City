@@ -6,6 +6,8 @@ import {sign} from '../../hardware-cloud/checkin-session.mjs';
 import {stepBatch} from '../../hardware-cloud/host-batches.mjs';
 const ids=['11111111-1111-1111-1111-111111111111','22222222-2222-2222-2222-222222222222','33333333-3333-3333-3333-333333333333','44444444-4444-4444-4444-444444444444','55555555-5555-5555-5555-555555555555','66666666-6666-6666-6666-666666666666','77777777-7777-7777-7777-777777777777','88888888-8888-8888-8888-888888888888'];
 const [device,member,event,batch,session,retry,peer,peerMember]=ids,token='a'.repeat(64),hash=createHash('sha256').update(token).digest('hex'),stamp=Math.floor(Date.now()/1000);
+// Keep generated server envelopes and expected HMAC timestamps in one fixture second.
+Date.now=()=>stamp*1000;
 const db=openDatabase(':memory:');migrate(db);const env={DB:db,AUTH_PEPPER:'firmware-cloud-isolated-pepper-000000',PUBLIC_ORIGIN:'https://example.test'};
 try{
  for(const [m,d]of[[member,device],[peerMember,peer]]){db.raw.prepare("INSERT INTO members(id,email,nickname,status,created_at,updated_at) VALUES(?,?,?,'active',?,?)").run(m,m+'@example.test','Rae',stamp,stamp);db.raw.prepare('INSERT INTO devices VALUES(?,?,?,NULL,?)').run(d,m,d===device?hash:createHash('sha256').update('b'.repeat(64)).digest('hex'),stamp);}
@@ -63,6 +65,7 @@ try{
   vectors.enrollment_bound=await call('/api/device-enrollment/confirm',{request_id:request,decision:'accept'},enrollmentEnv);
   enrollmentDb.raw.prepare('UPDATE devices SET revoked_at=? WHERE id=?').run(stamp,device);
   vectors.enrollment_revoked=await call('/api/device-enrollment/status',null,enrollmentEnv);
+  vectors.enrollment_reset=await call('/api/device-enrollment/status?reset_on_revoke=1',null,enrollmentEnv);
  }finally{enrollmentDb.close();}
  writeFileSync(process.argv[2],JSON.stringify(vectors));
 }finally{db.close();}
