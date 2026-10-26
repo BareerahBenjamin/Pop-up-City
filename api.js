@@ -399,16 +399,17 @@ async function route(request, env) {
     requireMember(user); const kind = registration[2] === 'attendees' ? 'attendee' : 'volunteer';
     if (method === 'DELETE') { await run(env.DB, 'DELETE FROM event_registrations WHERE event_id=? AND member_id=? AND kind=?', registration[1], user.id, kind); return json({ ok: true }); }
     const e = await first(env.DB, 'SELECT * FROM events WHERE id=?', registration[1]); if (!e || e.status !== 'published') fail(409, '活动未开放报名');
-    if (e.starts_at <= now()) fail(409, '活动已开始，不能迟到报名');
+    const longterm = e.ends_at - e.starts_at >= 3 * 86400;
+    if ((longterm ? e.ends_at : e.starts_at) <= now()) fail(409, longterm ? '活动已结束，报名已截止' : '活动已开始，不能迟到报名');
     if (!hasBoundDevice(env.DB, user.id)) fail(409, '请先绑定板子后再报名活动');
     const limit = kind === 'attendee' ? e.capacity : e.volunteer_capacity;
     if (!limit) fail(409, '未开放志愿者招募');
     const result = await run(env.DB, `INSERT OR IGNORE INTO event_registrations(event_id,member_id,kind,created_at)
-      SELECT ?,?,?,? WHERE (SELECT COUNT(*) FROM event_registrations WHERE event_id=? AND kind=?) < ? AND EXISTS(SELECT 1 FROM events WHERE id=? AND status='published' AND starts_at>unixepoch() AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=events.id)) AND EXISTS(SELECT 1 FROM devices WHERE member_id=? AND revoked_at IS NULL)`, e.id, user.id, kind, now(), e.id, kind, limit, e.id, user.id);
+      SELECT ?,?,?,? WHERE (SELECT COUNT(*) FROM event_registrations WHERE event_id=? AND kind=?) < ? AND EXISTS(SELECT 1 FROM events WHERE id=? AND status='published' AND (CASE WHEN ends_at-starts_at>=259200 THEN ends_at ELSE starts_at END)>unixepoch() AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=events.id)) AND EXISTS(SELECT 1 FROM devices WHERE member_id=? AND revoked_at IS NULL)`, e.id, user.id, kind, now(), e.id, kind, limit, e.id, user.id);
     if (!result.meta.changes) {
       const existing = await first(env.DB, 'SELECT 1 FROM event_registrations WHERE event_id=? AND member_id=? AND kind=?', e.id, user.id, kind);
       if (!hasBoundDevice(env.DB, user.id)) fail(409, '请先绑定板子后再报名活动');
-      if (!existing) fail(409, '活动已开始、未开放或名额已满');
+      if (!existing) fail(409, '活动未开放报名、报名已截止或名额已满');
     }
     return json({ ok: true });
   }

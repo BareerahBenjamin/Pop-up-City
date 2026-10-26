@@ -7,7 +7,9 @@ const shiftDay=(day,count)=>eventDay(dayStart(day)+count*86400);
 const eventClock=seconds=>new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(seconds*1000));
 const dayHeading=day=>new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',month:'long',day:'numeric',weekday:'short'}).format(new Date(dayStart(day)*1000));
 let calendarDays=3,calendarDate=eventDay(Date.now()/1000),posterVersion=0,posterEvent=null,posterBlob=null;
-function eventTimeLabel(event,seconds=Date.now()/1000){return event.status!=='published'?statusText(event.status):event.ends_at<=seconds?'已结束':event.starts_at<=seconds?'已开始 · 报名截止':'未开始'}
+const isLongtermEvent=event=>event.ends_at-event.starts_at>=3*86400;
+function eventRegistrationOpen(event,seconds=Date.now()/1000){return event.status==='published'&&(isLongtermEvent(event)?event.ends_at:event.starts_at)>seconds;}
+function eventTimeLabel(event,seconds=Date.now()/1000){return event.status!=='published'?statusText(event.status):event.ends_at<=seconds?'已结束':event.starts_at<=seconds?isLongtermEvent(event)?'进行中 · 可报名':'已开始 · 报名截止':'未开始'}
 const interestOperations=new Map();
 let interestOwner=null,interestReads=Promise.resolve(),interestNavigation=null,highlightedInterestId=null;
 function reconcileInterestOwner(){
@@ -179,7 +181,7 @@ async function renderEventPoster(){
     for(const line of [`时间 / ${datetime(event.starts_at)}`,`结束 / ${datetime(event.ends_at)}（UTC+8）`,...place,...host,'',...descriptionLines]){ctx.fillText(line,72,y);y+=48}
     const bottom=canvas.height-70;
     if(code){ctx.drawImage(code,740,bottom-240,240,240);ctx.font='26px sans-serif';ctx.fillText('扫码查看详情与报名',72,bottom-140)}
-    ctx.font='28px sans-serif';ctx.fillStyle='#bd2869';ctx.fillText(event.status==='published'?eventTimeLabel(event)==='未开始'?'请提前到场 · 活动开始后停止报名与签到':eventTimeLabel(event):`草稿 · ${statusText(event.status)} · 暂不可报名`,72,bottom-60);
+    ctx.font='28px sans-serif';ctx.fillStyle='#bd2869';ctx.fillText(event.status==='published'?isLongtermEvent(event)&&eventRegistrationOpen(event)?'长期活动 · 活动结束前均可报名':eventTimeLabel(event)==='未开始'?'请提前到场 · 活动开始后停止报名与签到':eventTimeLabel(event):`草稿 · ${statusText(event.status)} · 暂不可报名`,72,bottom-60);
     ctx.font='24px sans-serif';ctx.fillStyle='#5f4354';ctx.fillText('HERSTORY / 学习、链接、创造、玩。',72,bottom);
     const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
     if(!current())return;if(!blob)throw new Error('生成失败');posterBlob=blob;
