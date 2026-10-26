@@ -165,7 +165,7 @@ async function renderEventPoster(){
     const [cover,logo,code]=await Promise.all([posterImage(event.cover_url||'/assets/series/heart.png'),posterImage('/assets/series/herstory-logo.png'),qr?posterImage(`/api/events/${event.id}/qr`):null]);
     if(!current())return;
     let ctx=canvas.getContext('2d');ctx.font='bold 62px sans-serif';const title=posterLines(ctx,event.title,936);
-    ctx.font='32px sans-serif';const place=posterLines(ctx,`地点 / ${event.location}`,936),host=posterLines(ctx,`发起人 / ${event.host_nickname||state.me?.nickname||'Herstory'}`,936);
+    ctx.font='32px sans-serif';const place=posterLines(ctx,`地点 / ${event.location}`,936),host=posterLines(ctx,`发起人 / ${eventOrganizerName(event)||state.me?.nickname||'Herstory'}`,936);
     const description=event.description.length>160?event.description.slice(0,160)+'…':event.description;const descriptionLines=posterLines(ctx,description,936);
     canvas.height=1100+title.length*80+(place.length+host.length+descriptionLines.length)*48+(qr?250:100);
     ctx=canvas.getContext('2d');ctx.fillStyle='#fff5f8';ctx.fillRect(0,0,1080,canvas.height);

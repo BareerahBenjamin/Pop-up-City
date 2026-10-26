@@ -3,7 +3,7 @@
 let discovery={query:'',category:'',scope:'all'},discoveryOwner=null,discoveryPastOpen=false;
 function filterDiscovery(events,filters=discovery,now=Date.now()/1000){
   const query=filters.query.trim().toLocaleLowerCase();
-  return events.filter(e=>(!query||[e.title,e.location,e.host_nickname,e.category].some(value=>String(value||'').toLocaleLowerCase().includes(query)))
+  return events.filter(e=>(!query||[e.title,e.location,eventOrganizerName(e),e.host_nickname,e.category].some(value=>String(value||'').toLocaleLowerCase().includes(query)))
     &&(!filters.category||e.category===filters.category)
     &&(filters.scope==='all'||e.status==='published'&&e.ends_at>now&&(filters.scope==='upcoming'&&e.starts_at>now||filters.scope==='saved'&&e.my_interested||filters.scope==='joined'&&e.my_attending)))
     .sort((a,b)=>Number(a.starts_at)-Number(b.starts_at)||Number(a.ends_at)-Number(b.ends_at)||a.id.localeCompare(b.id));
