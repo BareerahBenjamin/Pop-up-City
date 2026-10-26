@@ -105,10 +105,10 @@ test('host reassignment changes only event ownership plus audit; new host inheri
  assert.equal(f.db.raw.prepare("SELECT COUNT(*) n FROM event_audit WHERE action='change-host'").get().n,1);
  assert.equal((await f.call(path,f.admin,data,'PATCH')).status,409);
 });
-test('host changes reject conflicting schedules and deleted events atomically',async t=>{
+test('host changes accept overlapping schedules but still reject deleted events',async t=>{
  const f=fixture(t),path=`/api/admin/events/${f.id}/host`,data={host_id:f.next.id,previous_host_id:f.host.id};f.event('published',f.next);
- assert.equal((await f.call(path,f.admin,data,'PATCH')).status,409);assert.equal(f.db.raw.prepare('SELECT host_id FROM events WHERE id=?').get(f.id).host_id,f.host.id);
- assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM event_audit').get().n,0);
+ assert.equal((await f.call(path,f.admin,data,'PATCH')).status,200);assert.equal(f.db.raw.prepare('SELECT host_id FROM events WHERE id=?').get(f.id).host_id,f.next.id);
+ assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM event_audit').get().n,1);
  f.db.raw.prepare('INSERT INTO event_deletions VALUES(?,?,?)').run(f.id,f.admin.id,f.stamp);assert.equal((await f.call(path,f.admin,data,'PATCH')).status,404);
 });
 

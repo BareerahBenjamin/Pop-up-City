@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 function helpers(clock){
   const context=vm.createContext({document:{addEventListener(){},querySelector(){return null}},window:{addEventListener(){}},setInterval(){},Intl,Date:clock===undefined?Date:class extends Date {static now(){return clock;}}});
-  vm.runInContext(['event-tools.js','dashboard.js','month-calendar.js','campus-map.js'].map(name=>readFileSync(new URL(`../public/${name}`,import.meta.url),'utf8')).join('\n')+`
+  vm.runInContext(['event-tools.js','event-options.js','dashboard.js','month-calendar.js','campus-map.js'].map(name=>readFileSync(new URL(`../public/${name}`,import.meta.url),'utf8')).join('\n')+`
     function esc(value){return String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;')}
     function statusText(value){return value}
     interestButton=()=>'';interestFeedbackSlot=()=>'';

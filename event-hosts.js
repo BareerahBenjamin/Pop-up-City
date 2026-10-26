@@ -22,7 +22,6 @@ export async function eventHostsRoute(request,env,url,user,readBody){
    const member=db.prepare("SELECT id,nickname FROM members WHERE id=? AND status='active'").get(input.host_id);
    if(!member)fail(400,'只能选择当前已注册且未停用的用户');
    if(event.host_id!==member.id){
-    if(['pending','published'].includes(event.status)&&db.prepare("SELECT 1 FROM events e WHERE host_id=? AND id!=? AND status IN ('pending','published') AND starts_at<? AND ends_at>? AND NOT EXISTS(SELECT 1 FROM event_deletions d WHERE d.event_id=e.id) LIMIT 1").get(member.id,event.id,event.ends_at,event.starts_at))fail(409,'该用户发起的活动时间有重叠，请选择其他用户或调整时间');
     const stamp=Math.floor(Date.now()/1000);
     db.prepare('UPDATE events SET host_id=?,updated_at=? WHERE id=?').run(member.id,stamp,event.id);
     db.prepare('INSERT INTO event_audit VALUES(?,?,?,?,?,?)').run(randomUUID(),event.id,user.id,'change-host',JSON.stringify({previous_host_id:event.host_id,host_id:member.id}),stamp);

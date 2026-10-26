@@ -1,3 +1,5 @@
+import { eventPinsRoute, withEventPins } from './event-pins.js';
+import { planetReportsRoute } from './planet-reports.js';
 import {eventMaterialsRoute} from './event-materials.js';
 import {eventHostsRoute} from './event-hosts.js';
 import { PlanetGrowthError, growthTransaction, activatePlanetGrowth, configurePlanetEvent, reviewPlanetRole, correctPlanetFact, planetGrowthAdmin } from './planet-growth.js';
@@ -34,16 +36,6 @@ const sql = (db, query, ...args) => db.prepare(query).bind(...args);
 const first = (db, query, ...args) => sql(db, query, ...args).first();
 const all = async (db, query, ...args) => (await sql(db, query, ...args).all()).results;
 const run = (db, query, ...args) => sql(db, query, ...args).run();
-// Executed by DB.batch inside BEGIN IMMEDIATE, sharing the write lock with the mutation.
-function eventSlotGuard(db, hostId, starts, ends, status, excludeId = '') {
-  return { run() {
-    if (!['pending', 'published'].includes(status)) return { meta: { changes: 0 } };
-    const conflict = db.raw.prepare(`SELECT id FROM events WHERE host_id=? AND id!=?
-      AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=events.id) AND status IN ('pending','published') AND starts_at<? AND ends_at>? LIMIT 1`).get(hostId, excludeId, ends, starts);
-    if (conflict) fail(409, '你发起的活动时间有重叠，请调整开始或结束时间');
-    return { meta: { changes: 0 } };
-  } };
-}
 function hasBoundDevice(db, memberId) {
   return Boolean(db.raw.prepare('SELECT 1 FROM devices WHERE member_id=? AND revoked_at IS NULL LIMIT 1').get(memberId));
 }
@@ -189,6 +181,10 @@ async function route(request, env) {
   const user = await memberFromCookie(request, env);
   const requestedEvent = /^\/api\/events\/([a-f0-9-]{36})(?:\/|$)/.exec(p);
   if (requestedEvent && await first(env.DB, 'SELECT 1 FROM event_deletions WHERE event_id=?', requestedEvent[1])) fail(404, '活动已删除或不存在');
+  const pins=await eventPinsRoute(request,env,url,user,body);
+  if(pins)return pins;
+  const reports=planetReportsRoute(request,env,url,user);
+  if(reports)return reports;
   const materials=await eventMaterialsRoute(request,env,url,user);
   if(materials)return materials;
   const hosts=await eventHostsRoute(request,env,url,user,body);
@@ -288,7 +284,7 @@ async function route(request, env) {
       EXISTS(SELECT 1 FROM event_registrations r WHERE r.event_id=e.id AND r.kind='volunteer' AND r.member_id=?) my_volunteering,
       EXISTS(SELECT 1 FROM event_interests i WHERE i.event_id=e.id AND i.member_id=?) my_interested
       FROM events e JOIN members m ON m.id=e.host_id LEFT JOIN event_covers c ON c.event_id=e.id ${q} ${q?'AND':'WHERE'} NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=e.id) ORDER BY e.starts_at,e.id`, user?.id || '', user?.id || '', user?.id || '', ...(q.includes('?') ? [user.id] : []));
-    return json({ events: items.map(withCoverUrl) });
+    return json({ events: withEventPins(env.DB,items.map(withCoverUrl)) });
   }
   if (method === 'POST' && p === '/api/admin/events/import') {
     requireAdmin(user);
@@ -322,14 +318,6 @@ async function route(request, env) {
     try {
       const duplicate = db.prepare("SELECT 1 FROM events WHERE title=? AND starts_at=? AND location=? AND status!='cancelled' AND NOT EXISTS (SELECT 1 FROM event_deletions d WHERE d.event_id=events.id)");
       for (const row of rows) if (duplicate.get(row.title, row.starts, row.location)) errors.push(`第 ${row.row} 行：已有同名、同时间、同地点活动，请移除重复行`);
-      if (['pending','published'].includes(input.status)) {
-        for (let i=0;i<rows.length;i++) {
-          const row=rows[i];
-          eventSlotGuard(env.DB,user.id,row.starts,row.ends,input.status).run();
-          for (let j=0;j<i;j++) if (row.starts<rows[j].ends && row.ends>rows[j].starts)
-            errors.push(`第 ${row.row} 行：与第 ${rows[j].row} 行活动时间重叠`);
-        }
-      }
       if (errors.length) fail(409, errors.join('\n'));
       if (input.preview) { db.exec('ROLLBACK'); return json({ count: rows.length, events: rows }); }
       const stamp = now(), ids = [];
@@ -350,7 +338,6 @@ async function route(request, env) {
     if (input.official !== undefined && typeof input.official !== 'boolean') fail(400, '官方标记不合法');
     const cover = await validateCover(input.cover);
     await env.DB.batch([
-      eventSlotGuard(env.DB, user.id, d.starts, d.ends, status),
       sql(env.DB, 'INSERT INTO events(id,title,description,category,location,starts_at,ends_at,capacity,volunteer_capacity,host_id,official,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)', id, d.title, d.description, d.category, d.location, d.starts, d.ends, d.capacity, d.volunteers, user.id, user.role === 'admin' && input.official ? 1 : 0, status, stamp, stamp),
       ...coverStatements(env.DB, id, cover),
       sql(env.DB, 'INSERT INTO event_audit VALUES(?,?,?,?,?,?)', uid(), id, user.id, 'create', '', stamp),
@@ -400,7 +387,6 @@ async function route(request, env) {
       const status = user.role === 'admin' ? old.status : old.status === 'cancelled' ? 'cancelled' : 'pending';
       const cover = await validateCover(input.cover), stamp = now();
       await env.DB.batch([
-        eventSlotGuard(env.DB, old.host_id, d.starts, d.ends, status, old.id),
         sql(env.DB, `UPDATE events SET title=?,description=?,category=?,location=?,starts_at=?,ends_at=?,capacity=?,volunteer_capacity=?,official=?,status=?,reason='',updated_at=? WHERE id=?`, d.title, d.description, d.category, d.location, d.starts, d.ends, d.capacity, d.volunteers, user.role === 'admin' && input.official !== undefined ? Number(input.official) : old.official, status, stamp, old.id),
         ...coverStatements(env.DB, old.id, cover),
         sql(env.DB, 'INSERT INTO event_audit VALUES(?,?,?,?,?,?)', uid(), old.id, user.id, 'edit', '', stamp),
@@ -528,11 +514,6 @@ async function adminRoute(request, env, url, user) {
     if (!['pending','published','rejected','cancelled'].includes(status) || typeof official !== 'boolean') fail(400, '活动状态不合法');
     if (['rejected','cancelled'].includes(status) && !reason) fail(400, '请填写原因');
     await env.DB.batch([
-      { run() {
-        const current = env.DB.raw.prepare('SELECT host_id,starts_at,ends_at FROM events WHERE id=?').get(old.id);
-        if (!current) fail(404, '活动不存在');
-        return eventSlotGuard(env.DB, current.host_id, current.starts_at, current.ends_at, status, old.id).run();
-      } },
       sql(env.DB, 'UPDATE events SET status=?,official=?,reason=?,updated_at=? WHERE id=?', status, Number(official), reason, now(), old.id),
       sql(env.DB, 'INSERT INTO event_audit VALUES(?,?,?,?,?,?)', uid(), old.id, user.id, `status:${status},official:${official}`, reason, now()),
     ]); return json({ event: await eventDetail(env.DB, old.id) });

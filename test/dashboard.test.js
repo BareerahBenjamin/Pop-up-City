@@ -5,9 +5,19 @@ import vm from 'node:vm';
 const source=readFileSync(new URL('../public/dashboard.js',import.meta.url),'utf8');
 function helpers(){
   const context=vm.createContext({document:{addEventListener(){}},setInterval(){},Intl,Date});
-  vm.runInContext(readFileSync(new URL('../public/event-tools.js',import.meta.url),'utf8')+'\n'+source+'\n'+readFileSync(new URL('../public/month-calendar.js',import.meta.url),'utf8')+'\nthis.helpers={filterDiscovery,discoveryGroups,calendarHour,dayStart,dashboardCalendar};',context);
+  vm.runInContext(readFileSync(new URL('../public/event-tools.js',import.meta.url),'utf8')+'\n'+readFileSync(new URL('../public/event-options.js',import.meta.url),'utf8')+'\n'+source+'\n'+readFileSync(new URL('../public/month-calendar.js',import.meta.url),'utf8')+'\nthis.helpers={filterDiscovery,discoveryGroups,calendarHour,dayStart,dashboardCalendar};',context);
   return {context,...context.helpers};
 }
+test('active pins form one ordered group, respect filters and expire without changing calendar chronology',()=>{
+  const {discoveryGroups,filterDiscovery}=helpers(),now=1000;
+  const make=(id,extra={})=>({id,title:id,category:'学习',location:'教室',host_nickname:'邻居',status:'published',starts_at:1100,ends_at:1200,...extra});
+  const events=[make('earlier',{starts_at:1050}),make('pinned',{pinned:true,pinned_at:10}),make('long-pin',{starts_at:-300000,ends_at:2000,pinned:true,pinned_at:5}),make('expired',{starts_at:500,ends_at:900,pinned:true,pinned_at:20}),make('draft',{status:'pending',pinned:true,pinned_at:30})];
+  const groups=discoveryGroups(events,now);
+  assert.deepEqual(Array.from(groups.pinned,e=>e.id),['pinned','long-pin']);assert.deepEqual(Array.from(groups.nearby,e=>e.id),['earlier']);assert.equal(groups.longterm.length,0);
+  assert.deepEqual(Array.from(groups.past,e=>e.id),['expired']);assert.deepEqual(Array.from(groups.drafts,e=>e.id),['draft']);
+  const filtered=filterDiscovery(events,{query:'earlier',category:'',scope:'all'},now);assert.equal(discoveryGroups(filtered,now).pinned.length,0);
+  assert.deepEqual(events.map(e=>e.id),['earlier','pinned','long-pin','expired','draft']);
+});
 test('discovery combines search and category; personal filters exclude cancelled and ended activities without mutating source',()=>{
   const {filterDiscovery}=helpers(),now=1000;
   const make=(id,extra={})=>({id,title:'一起做陶器',location:'共同客厅',host_nickname:'邻居',category:'共创',status:'published',starts_at:1100,ends_at:1200,...extra});

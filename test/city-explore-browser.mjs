@@ -103,7 +103,7 @@ try{
   const ongoingLong=event('持续开放的共创计划','街角咖啡',now-10*86400,now+10*86400,'published','共创',longHost);
   const futureLong=event('未来长期计划','街角咖啡',now+12*86400,now+20*86400,'published','共创',longHost);
   const pastEvent=event('上个月的相遇','街角咖啡',now-30*86400,now-29*86400);
-  await page.goto(origin+'/#events');await page.reload();await page.locator('[data-event-group=longterm]').waitFor();
+  await page.goto(origin+'/#events');await page.reload();await page.locator('.calendar-longterm').waitFor();
   assert.equal(await page.locator(`.month-events a[href="#event/${ongoingLong}"],.month-day-list a[href="#event/${ongoingLong}"]`).count(),0);
   assert.equal(await page.locator('.calendar-longterm').evaluate(e=>e.open),false);
   assert.equal(await page.locator(`.calendar-longterm a[href="#event/${ongoingLong}"]`).count(),1);
@@ -115,9 +115,10 @@ try{
   }
   await page.locator('[data-action=month-view]').click();
   const groups=await page.locator('.discovery-gallery [data-event-group]').evaluateAll(nodes=>nodes.map(n=>n.dataset.eventGroup));
-  assert.deepEqual(groups,['nearby','longterm','drafts','past']);
+  assert.deepEqual(groups,['nearby','drafts','past']);
   assert.equal(await page.locator(`[data-event-group=nearby] a[href="#event/${ongoingLong}"]`).count(),0);
-  assert.deepEqual(await page.locator('[data-event-group=longterm] .card-link').evaluateAll(links=>links.map(a=>a.hash.split('/')[1])),[ongoingLong,futureLong]);
+  assert.equal(await page.locator('[data-event-group=longterm]').count(),0);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) n FROM events WHERE id IN (?,?)').get(ongoingLong,futureLong).n,2);
   assert.equal(await page.locator('.discovery-past').evaluate(e=>e.open),false);
   assert.equal(await page.locator(`.discovery-past a[href="#event/${pastEvent}"]`).isVisible(),false);
   await page.locator('.discovery-past summary').focus();await page.keyboard.press('Enter');
@@ -132,17 +133,21 @@ try{
     await page.locator('.discovery-gallery').screenshot({path:`${out}/grouped-events-${width}.png`});
   }
   await page.locator('#discovery-query').fill('持续开放的共创计划');await page.locator('#discovery-form button').click();
-  assert.equal(await page.locator('[data-event-group=longterm] .card-link').count(),1);
+  assert.equal(await page.locator('[data-event-group=longterm]').count(),0);
+  assert.equal(await page.locator(`.calendar-longterm a[href="#event/${ongoingLong}"]`).count(),1);
   assert.equal(await page.locator('[data-event-group=nearby] .card-link').count(),0);
   await page.locator('.discovery-controls [data-action=discovery-reset]').click();
-  const longHeart=page.locator(`[data-event-group=longterm] .interest-button[data-id="${futureLong}"]`);
-  await longHeart.click();await page.waitForFunction(id=>document.querySelector(`[data-event-group=longterm] .interest-button[data-id="${id}"]`)?.getAttribute('aria-pressed')==='true',futureLong);
+  await page.goto(`${origin}/#event/${futureLong}`);
+  const longHeart=page.locator(`.detail .interest-button[data-id="${futureLong}"]`);
+  await longHeart.click();await page.waitForFunction(id=>document.querySelector(`.detail .interest-button[data-id="${id}"]`)?.getAttribute('aria-pressed')==='true',futureLong);
   assert.equal(db.raw.prepare('SELECT COUNT(*) n FROM event_interests WHERE event_id=?').get(futureLong).n,1);
-  await page.locator('.discovery-scopes [data-scope=saved]').click();
-  assert.deepEqual(await page.locator('[data-event-group=longterm] .card-link').evaluateAll(links=>links.map(a=>a.hash.split('/')[1])),[futureLong]);
-  await longHeart.click();await page.waitForFunction(()=>!document.querySelector('[data-event-group=longterm]'));
-  await page.locator('.discovery-controls [data-action=discovery-reset]').click();
-  console.log('PASSED: long-term events separated, near-term cards first, collapsed archive keyboard access and refresh persistence, grouped search, responsive layouts.');
+  await page.goto(origin+'/#events');await page.locator('.discovery-scopes [data-scope=saved]').click();
+  assert.equal(await page.locator('[data-event-group=longterm]').count(),0);
+  assert.deepEqual(await page.evaluate(()=>filterDiscovery(state.events).map(e=>e.id)),[futureLong]);
+  await page.goto(`${origin}/#event/${futureLong}`);await longHeart.click();
+  await page.waitForFunction(id=>document.querySelector(`.detail .interest-button[data-id="${id}"]`)?.getAttribute('aria-pressed')==='false',futureLong);
+  await page.goto(origin+'/#events');await page.locator('.discovery-controls [data-action=discovery-reset]').click();
+  console.log('PASSED: bottom long-term section removed; calendar and detail access, saved filtering, stored activities and collapsed archive remain intact.');
   // Verify the mutually exclusive event-origin choices through actual edits and reloads.
   db.raw.prepare("UPDATE members SET role='admin' WHERE id=?").run(member);
   await page.setViewportSize({width:375,height:850});await page.reload();await page.goto(`${origin}/#event/${first}`);
