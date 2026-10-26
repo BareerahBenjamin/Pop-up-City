@@ -1,4 +1,10 @@
 'use strict';
+// Presentation names are scoped to these three tasks and their real manager.
+// Keep host_id and host_nickname intact for permissions and device consumers.
+const team1EventIds=new Set(['f8fb1d84-74d5-4758-bb07-a2876a3bdbb5','e518dfc2-3c25-4262-8347-27fe6ffc2f66','18c62200-f02e-4d64-a0ba-2e1ce48b78e3']);
+function eventOrganizerName(event){
+ return event.host_id==='0aeff874-c8e3-49a4-9fe3-eb7b440f5bc0'&&team1EventIds.has(event.id)?'Team1':event.host_nickname||'';
+}
 const isWebPinned=(event,now=Date.now()/1000)=>event.pinned===true&&event.status==='published'&&event.ends_at>now;
 function eventPinButton(event){
  if(state.me?.role!=='admin'||!event.pinned_at&&(event.status!=='published'||event.ends_at<=Date.now()/1000))return '';
