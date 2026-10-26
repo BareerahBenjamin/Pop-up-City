@@ -140,3 +140,28 @@ test('new initialization and claims reject missing credentials, malformed codes,
  assert.equal((await f.call('/api/device-enrollment/status',null)).status,401);
  f.env.DEVICE_ENROLLMENT_KEY='';assert.equal((await register(f,fresh())).status,403);
 });
+
+test('revocation resets with a fresh identity; replay is durable; old receipts remain isolated',async t=>{
+ const f=fixture(t,true);unbindFixture(f);const board=fresh();
+ let initial=unwrap(await register(f,board),board);
+ const base='/api/admin/members/'+f.a.id+'/device-claims';
+ let claim=await f.call(base,f.admin,{code:initial.claim_code});
+ unwrap(await f.call('/api/device-enrollment/confirm',board,{request_id:claim.data.request_id,decision:'accept'}),board);
+ assert.equal((await f.call('/api/admin/devices/'+board.id,f.admin,null,'DELETE')).status,200);
+ assert.equal(unwrap(await f.call('/api/device-enrollment/status',board),board).state,'revoked');
+ const path='/api/device-enrollment/status?reset_on_revoke=1';
+ const reset=unwrap(await f.call(path,board),board);assert.equal(reset.state,'reset_required');
+ assert.notEqual(reset.replacement_device_id,board.id);assert.notEqual(reset.replacement_device_token,board.token);
+ f.reopen();assert.deepEqual(unwrap(await f.call(path,board),board),reset);
+ const replacement={id:reset.replacement_device_id,token:reset.replacement_device_token};
+ assert.equal((await f.call('/api/device/me',replacement)).status,401);
+ initial=unwrap(await f.call('/api/device-enrollment/status',replacement),replacement);assert.equal(initial.state,'unbound');
+ assert.equal(unwrap(await f.call(path,board),board).state,'revoked');
+ claim=await f.call('/api/admin/members/'+f.b.id+'/device-claims',f.admin,{code:initial.claim_code});assert.equal(claim.status,200);
+ assert.equal((await f.call('/api/device/me',replacement)).status,401);
+ assert.equal(unwrap(await f.call('/api/device-enrollment/confirm',replacement,{request_id:claim.data.request_id,decision:'accept'}),replacement).member_id,f.b.id);
+ assert.equal((await f.call('/api/device/me',replacement)).data.member_id,f.b.id);
+ assert.equal((await f.call('/api/device/me',board)).status,401);
+ assert.equal(f.db.raw.prepare('SELECT member_id FROM devices WHERE id=?').get(board.id).member_id,f.a.id);
+ assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM device_reenrollment').get().n,1);
+});

@@ -149,7 +149,7 @@ async function hostRoute(db,board,method,path,data,all) {
  if(!hostActivities(db,board).some(e=>e.id===data.activity_id))fail(403,'HOST_NOT_AUTHORIZED');
  presence(peer,data);
  if(!db.raw.prepare("SELECT 1 FROM event_registrations WHERE event_id=? AND member_id=?").get(data.activity_id,peer.member_id))fail(403,'NOT_REGISTERED');
- if(op==='nearby')return wrap(board,{activity_id:data.activity_id,user_device_id:peer.id,user_label:peer.nickname,name_bitmap:await nameBitmap(peer.nickname),presence_tag:data.presence_tag});
+ if(op==='nearby')return wrap(board,{activity_id:data.activity_id,user_device_id:peer.id,user_label:peer.nickname,signed_in:!!db.raw.prepare('SELECT 1 FROM checkins WHERE event_id=? AND member_id=?').get(data.activity_id,peer.member_id),name_bitmap:await nameBitmap(peer.nickname),name_bitmap_style:"popcity-pixel-v1",presence_tag:data.presence_tag});
  if(!Number.isSafeInteger(data.occurred_at)||Math.abs(now()-data.occurred_at)>90)fail(409,'CONFIRMATION_EXPIRED');
  db.raw.exec('BEGIN IMMEDIATE');
  try{

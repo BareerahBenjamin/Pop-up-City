@@ -1,0 +1,13 @@
+{
+  "source_archive": "全部页面设计与逻辑.zip",
+  "archive_sha256": "d9620ab07e7dc0dc056f4cbb29884a79e6e401181939fb954e65aa36617b0b0a",
+  "manifest_sha256": "8545bdc684b0ecafc65bd59f73af14149b3b9fac7ac3c955edebf82014b70635",
+  "verified_original_static_pngs": 141,
+  "complete_ui_conformance": "pending physical visual acceptance",
+  "physical_visual_acceptance": "not_run",
+  "verified_welcome_frames": 168,
+  "approved_revision": "2026-10-22-website-courseware-host-integration",
+  "source_directory": "output/approved-current-design",
+  "name_font_sha256": "cfcd1ffccab4768ebdf2d4f2b226db8f50a9d07e8c86ae22a91a0b899a8d6700",
+  "implementation_notes": "固件实现与烧录说明-20261020.md"
+}

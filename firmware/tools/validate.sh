@@ -49,3 +49,44 @@ python3 "$root/tests/test_portable.py"
 "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
  -I"$root/main" "$root/tests/test_friend_visual.c" "$root/main/friend_visual.c" -o "$test_dir/test_friend_visual"
 "$test_dir/test_friend_visual"
+
+"${CC:-cc}" -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
+ -I"$root/main" "$root/tests/test_pixel_glyphs.c" -o "$test_dir/test_pixel_glyphs"
+"$test_dir/test_pixel_glyphs"
+
+if [ ! -f "$test_dir/cjson.o" ]; then
+ "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Wno-deprecated-declarations -fsanitize=address,undefined \
+  -I"$root/tests/vendor/cjson" -c "$root/tests/vendor/cjson/cJSON.c" -o "$test_dir/cjson.o"
+fi
+"${CC:-cc}" -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
+ -I"$root/main" -I"$root/tests/vendor/cjson" "$root/tests/test_cjk_name.c" "$root/main/cjk_name.c" "$test_dir/cjson.o" -o "$test_dir/test_cjk_name"
+node "$root/tests/pixel_name_vectors.mjs" "$test_dir/pixel-name-vectors.json"
+"$test_dir/test_cjk_name" "$root/main/generated/cjk_font.bin" "$test_dir/pixel-name-vectors.json"
+
+"${CC:-cc}" -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
+ -I"$root/main" "$root/tests/test_network_handoff.c" "$root/main/network_handoff.c" \
+ "$root/main/blufi_input.c" "$root/main/network_profiles.c" -o "$test_dir/test_network_handoff"
+"$test_dir/test_network_handoff"
+"${CC:-cc}" -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
+ -DCONFIG_PLANET_SERVER_ORIGIN='"https://example.invalid"' \
+ -I"$root/tests/network_stubs" -I"$root/tests/stubs" -I"$root/main" \
+ -I"$root/components/pop_city_core/include" -I"$root/tests/vendor/cjson" \
+ "$root/tests/test_network_setup.c" "$root/main/network_setup.c" "$root/main/network_profiles.c" -o "$test_dir/test_network_setup"
+for scenario in none five fallback auth same dhcp timeout save session; do
+ "$test_dir/test_network_setup" "$scenario"
+done
+
+"${CC:-cc}" -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
+ -I"$root/tests/stubs" -I"$root/main" -I"$root/components/pop_city_core/include" \
+ "$root/tests/test_legacy_import.c" "$root/main/legacy_import.c" "$root/main/event_storage.c" \
+ "$root/main/event_save_model.c" "$root/main/personal_store.c" -o "$test_dir/test_legacy_import"
+"$test_dir/test_legacy_import"
+
+"${CC:-cc}" -std=gnu11 -Wall -Wextra -Werror -fsanitize=address,undefined \
+ -I"$root/tests/panel_stubs" -I"$root/tests/stubs" -I"$root/main" \
+ "$root/tests/test_panel_renderer.c" "$root/main/panel_renderer.c" -o "$test_dir/test_panel"
+"$test_dir/test_panel"
+
+"${CC:-cc}" -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
+ -I"$root/main" "$root/tests/test_network_commands.c" -o "$test_dir/test_commands"
+"$test_dir/test_commands"

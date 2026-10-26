@@ -1,5 +1,6 @@
 #include "identity_setup.h"
 #include <string.h>
+#include <stdio.h>
 static const char *field(cJSON *r,const char *key){cJSON *v=cJSON_GetObjectItemCaseSensitive(r,key);return cJSON_IsString(v)?v->valuestring:NULL;}
 pc_cloud_result pc_identity_apply(pc_store *store,const char *json,const char *nonce,const char *board_uid){
  if(!store||!json||!nonce||strlen(nonce)!=32||!board_uid||strlen(board_uid)!=12||!store->writable)return PC_CLOUD_INVALID;
@@ -9,6 +10,10 @@ pc_cloud_result pc_identity_apply(pc_store *store,const char *json,const char *n
  const char *id=field(r,"device_id"),*token=field(r,"device_token"),*origin=field(r,"server_origin"),*received=field(r,"nonce"),*board=field(r,"board_uid");
  bool valid=id&&pc_cloud_uuid(id)&&token&&strlen(token)==64&&origin&&pc_cloud_origin_valid(origin)&&received&&!strcmp(received,nonce)&&board&&!strcmp(board,board_uid);
  for(unsigned i=0;valid&&i<64;i++)if(!((token[i]>='a'&&token[i]<='f')||(token[i]>='0'&&token[i]<='9')))valid=false;
+ if(!valid)printf("\nPC_INIT_CHECK json=%u id=%u token=%u origin=%u nonce=%u board=%u\n",
+  (unsigned)cJSON_IsObject(r),(unsigned)(id&&pc_cloud_uuid(id)),
+  (unsigned)(token&&strlen(token)==64),(unsigned)(origin&&pc_cloud_origin_valid(origin)),
+  (unsigned)(received&&!strcmp(received,nonce)),(unsigned)(board&&!strcmp(board,board_uid)));
  pc_cloud_result result=PC_CLOUD_INVALID;
  if(valid){pc_personal_data next=store->data;memcpy(next.device_id,id,37);memcpy(next.device_token,token,65);strcpy(next.server_origin,origin);result=pc_store_commit(store,&next)==ESP_OK?PC_CLOUD_OK:PC_CLOUD_STORAGE;memset(&next,0,sizeof(next));}
  if(token){memset((char *)token,0,strlen(token));}

@@ -7,7 +7,8 @@
 #define NEARBY_TTL_MS 5000u
 /* Application-task owned. BLE callbacks must enqueue sightings, never mutate it. */
 typedef struct {
-    bool occupied;
+    bool occupied,host_eligible,checked_in;
+    uint32_t host_checked_ms;
     uint8_t device_id[16];
     int8_t rssi;
     uint32_t seen_ms;
@@ -28,3 +29,8 @@ bool nearby_selected(const nearby_participants_t *list, uint32_t now_ms,
 
 /* Snapshot only live peers at the physical batch-confirmation instant. */
 size_t nearby_snapshot(const nearby_participants_t *list,uint32_t now_ms,nearby_participant_t out[NEARBY_CAPACITY]);
+
+size_t nearby_host_count(const nearby_participants_t *,uint32_t now_ms);
+
+/* Remove a completed selection; select the next pending peer or clear selection. */
+bool nearby_prune_checked_selection(nearby_participants_t *,uint32_t);

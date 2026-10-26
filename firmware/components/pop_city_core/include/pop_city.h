@@ -17,7 +17,7 @@ typedef enum {
  PC_RECONCILE_REQUEST
 } pc_action;
 typedef struct {
- pc_page page, target, help_source, friend_resume;
+ pc_page page, target, help_source, friend_resume, roster_return;
  bool online, bound, hello_skipped, host_active, unresolved, help, name_paused;
  uint32_t transition_at;
 } pc_state;
@@ -26,6 +26,7 @@ void pc_init(pc_state *s, bool hello_skipped, bool previously_bound);
 void pc_facts(pc_state *s, bool online, bool bound, bool host_active, uint32_t ms);
 void pc_tick(pc_state *s, uint32_t ms);
 pc_action pc_press(pc_state *s, pc_key key, bool long_press, uint32_t ms);
+pc_action pc_double_press(pc_state *, pc_key, uint32_t ms);
 /* Persist hello_skipped successfully before calling this. Failure leaves Hello looping. */
 void pc_hello_saved(pc_state *s, bool saved, uint32_t ms);
 void pc_operation_started(pc_state *s, pc_page waiting);

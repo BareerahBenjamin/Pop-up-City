@@ -1,4 +1,5 @@
 #include "cloud_internal.h"
+#include "cjk_name.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,12 +17,16 @@ void pc_cloud_init(pc_cloud *c,pc_store *store,pc_state *state,pc_cloud_sign_fn 
 static cJSON *parse(const char *s){const char *end=NULL;return cJSON_ParseWithLengthOpts(s,strlen(s)+1,&end,1);}
 pc_cloud_result pc_cloud_call(pc_cloud *c,bool get,const char *path,const cJSON *body,cJSON **out){
  *out=NULL;c->http_status=0;
- if(!c->store->writable||!c->sign||!c->transport||!pc_cloud_uuid(c->store->data.device_id)||!c->store->data.device_token[0]||!pc_cloud_origin_valid(c->store->data.server_origin))return PC_CLOUD_INVALID;
- char *request=body?cJSON_PrintUnformatted(body):NULL;char *response=calloc(1,PC_CLOUD_RESPONSE_BYTES);
- if(!response||(body&&!request)){free(request);free(response);return PC_CLOUD_TRANSPORT;}
- bool received=c->transport(c->transport_context,get,path,request?request:"",response,PC_CLOUD_RESPONSE_BYTES,&c->http_status);
+ if(!c->store->writable||!c->sign||(!c->transport&&!c->transport_alloc)||!pc_cloud_uuid(c->store->data.device_id)||!c->store->data.device_token[0]||!pc_cloud_origin_valid(c->store->data.server_origin))return PC_CLOUD_INVALID;
+ /* Enrollment responses are small; do not reserve the 16KiB runtime
+  * bitmap envelope while TLS needs its peak certificate-verification heap. */
+ size_t response_capacity=!strncmp(path,"/api/device-enrollment/",23)?4096u:PC_CLOUD_RESPONSE_BYTES;
+ char *request=body?cJSON_PrintUnformatted(body):NULL;char *response=c->transport_alloc?NULL:calloc(1,response_capacity);
+ if((!c->transport_alloc&&!response)||(body&&!request)){free(request);free(response);return PC_CLOUD_TRANSPORT;}
+ size_t allocated_bytes=response_capacity;
+ bool received=c->transport_alloc?c->transport_alloc(c->transport_context,get,path,request?request:"",&response,response_capacity,&allocated_bytes,&c->http_status):c->transport(c->transport_context,get,path,request?request:"",response,response_capacity,&c->http_status);
  if(request){memset(request,0,strlen(request));free(request);}
- if(!received||!memchr(response,0,PC_CLOUD_RESPONSE_BYTES)){free(response);return PC_CLOUD_TRANSPORT;}
+ if(!received||!response||!allocated_bytes||allocated_bytes>response_capacity||!memchr(response,0,allocated_bytes)){free(response);return PC_CLOUD_TRANSPORT;}
  if(c->http_status!=200){free(response);return PC_CLOUD_HTTP;}
  cJSON *envelope=parse(response);free(response);const char *payload=text(envelope,"payload"),*signature=text(envelope,"signature");char expected[65];
  bool verified=payload&&signature&&strlen(signature)==64&&c->sign(c->sign_context,payload,expected);
@@ -49,6 +54,11 @@ pc_cloud_result pc_cloud_runtime(pc_cloud *c,uint32_t ms,const char *known){
  }
  if(valid&&cJSON_GetObjectItemCaseSensitive(identity,"name_bitmap")){
   if(!pc_personal_visual_decode(r,&c->personal))valid=false;
+ }
+ if(valid){
+  const cJSON *activities=cJSON_GetObjectItemCaseSensitive(host,"active_activities");
+  const char *title=text(cJSON_GetArrayItem(activities,0),"title");c->active_title[0]=0;
+  if(title&&strlen(title)<sizeof(c->active_title))strcpy(c->active_title,title);
  }
  if(valid){c->active_title_valid=false;if(cJSON_IsTrue(allowed)&&cJSON_GetObjectItemCaseSensitive(host,"active_title_bitmap")){c->active_title_valid=pc_cloud_decode_bitmap(host,"active_title_bitmap",c->active_title_bitmap,sizeof(c->active_title_bitmap));if(!c->active_title_valid)valid=false;}}
  if(valid){
@@ -149,6 +159,12 @@ void pc_cloud_disconnect(pc_cloud *c,uint32_t ms){pc_feedback_disconnect(&c->fee
 static bool enrollment_valid(const cJSON *r){
  const char *state=text(r,"state");if(!state)return false;
  if(!strcmp(state,"revoked"))return true;
+ if(!strcmp(state,"reset_required")){
+  const char *token=text(r,"replacement_device_token");
+  if(!pc_cloud_uuid(text(r,"replacement_device_id"))||!token||strlen(token)!=64)return false;
+  for(unsigned i=0;i<64;i++)if(!((token[i]>='0'&&token[i]<='9')||(token[i]>='a'&&token[i]<='f')))return false;
+  return true;
+ }
  if(!strcmp(state,"bound"))return pc_cloud_uuid(text(r,"member_id"))&&text(r,"device_kind")&&!strcmp(text(r,"device_kind"),"user");
  if(strcmp(state,"pending")&&strcmp(state,"unbound"))return false;
  const char *code=text(r,"claim_code");uint64_t expires,time;
@@ -157,7 +173,7 @@ static bool enrollment_valid(const cJSON *r){
  return strcmp(state,"pending")||pc_cloud_uuid(text(r,"request_id"));
 }
 static pc_cloud_result enrollment_call(pc_cloud *c,bool get,cJSON *body,cJSON **out){
- pc_cloud_result result=pc_cloud_call(c,get,get?"/api/device-enrollment/status":"/api/device-enrollment/confirm",body,out);
+ pc_cloud_result result=pc_cloud_call(c,get,get?"/api/device-enrollment/status?reset_on_revoke=1":"/api/device-enrollment/confirm",body,out);
  if(result==PC_CLOUD_OK&&!enrollment_valid(*out)){cJSON_Delete(*out);*out=NULL;return PC_CLOUD_INVALID;}return result;
 }
 pc_cloud_result pc_cloud_enrollment_status(pc_cloud *c,cJSON **out){return enrollment_call(c,true,NULL,out);}
@@ -192,6 +208,15 @@ pc_cloud_result pc_cloud_roster(pc_cloud *c,const char *activity,uint32_t offset
    valid=pc_cloud_uuid(member)&&name&&strlen(name)<sizeof(page.members[i].name)&&status&&(!strcmp(status,"SIGNED")||!strcmp(status,"PENDING"));
    for(unsigned j=0;valid&&j<i;j++)if(!strcmp(member,page.members[j].member_id))valid=false;
    if(valid&&cJSON_GetObjectItemCaseSensitive(item,"name_bitmap")){page.members[i].name_bitmap_valid=pc_cloud_decode_bitmap(item,"name_bitmap",page.members[i].name_bitmap,sizeof(page.members[i].name_bitmap));valid=page.members[i].name_bitmap_valid;}
+#ifdef ESP_PLATFORM
+   if(valid){
+    const char *style=text(item,"name_bitmap_style");
+    if(!style||strcmp(style,PC_NAME_BITMAP_STYLE)){
+     page.members[i].name_bitmap_valid=pc_pixel_name_local(name,page.members[i].name_bitmap,sizeof(page.members[i].name_bitmap),192,16,1,false,false);
+     valid=page.members[i].name_bitmap_valid;
+    }
+   }
+#endif
    if(valid){memcpy(page.members[i].member_id,member,37);strcpy(page.members[i].name,name);page.members[i].signed_in=!strcmp(status,"SIGNED");}
   }
  }

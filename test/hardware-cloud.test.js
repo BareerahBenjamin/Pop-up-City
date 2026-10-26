@@ -162,12 +162,13 @@ test('host names require registration and batch checks only authenticated nearby
  };
  const eligible=submission(f.ba),unregistered=submission(f.bb);
  const named=unwrap(await f.call('/local/host/nearby',host,eligible),host);
- assert.equal(named.user_label,'测试成员');assert.match(named.name_bitmap,/^[a-f0-9]{1536}$/);assert.notEqual(named.name_bitmap,'0'.repeat(1536));
+ assert.equal(named.signed_in,false);assert.equal(named.user_label,'测试成员');assert.match(named.name_bitmap,/^[a-f0-9]{1536}$/);assert.notEqual(named.name_bitmap,'0'.repeat(1536));
  assert.equal((await f.call('/local/host/nearby',host,unregistered)).status,403);
  const batch={activity_id:activity,participants:[eligible,unregistered]};
  const done=unwrap(await f.call('/local/host/batch',host,batch),host);
  assert.deepEqual(done.results.map(x=>x.status),['checked_in','rejected']);
  assert.equal(f.db.raw.prepare('SELECT COUNT(*) n FROM checkins').get().n,1);
+ assert.equal(unwrap(await f.call('/local/host/nearby',host,eligible),host).signed_in,true);
  f.reopen();assert.deepEqual(unwrap(await f.call('/local/host/batch',host,batch),host),done);
  const result=unwrap(await f.call('/local/host/result',f.ba),f.ba);assert.equal(result.state,'done');
  assert.equal((await f.call('/local/host/batch',host,{activity_id:activity,participants:[eligible,eligible]})).status,400);

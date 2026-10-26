@@ -1,4 +1,4 @@
-import {nameBitmap,rosterNameBitmap} from './name-bitmap.mjs';
+import {activityTitleBitmap,rosterNameBitmap,NAME_BITMAP_STYLE} from './name-bitmap.mjs';
 import {createHash,timingSafeEqual,randomUUID} from 'node:crypto';
 import {HardwareError,hardwareKind} from '../hardware.js';
 import {sign} from './checkin-session.mjs';
@@ -113,7 +113,7 @@ export async function hostBatchRoute(request,env,url,reporter,readBody){
  if(path==='/api/device/host/roster'&&request.method==='GET'){
   const number=(name,fallback)=>{const v=url.searchParams.get(name);return v===null?fallback:/^\d+$/.test(v)?Number(v):NaN;};
   result=rosterPage(env.DB,reporter,{activityId:url.searchParams.get('activity_id'),offset:number('offset',0),limit:number('limit',6)});
-  result.activity_title_bitmap=await nameBitmap(result.activity_title);for(const item of result.items)item.name_bitmap=await rosterNameBitmap(item.name);
+  result.activity_title_bitmap=await activityTitleBitmap(result.activity_title);result.name_bitmap_style=NAME_BITMAP_STYLE;for(const item of result.items)item.name_bitmap=await rosterNameBitmap(item.name);
  }else if(path==='/api/device/host/batches'&&request.method==='POST')result=createBatch(env.DB,reporter,await readBody(request));
  else if(match&&!match[2]&&request.method==='GET')result=readBatch(env.DB,reporter,match[1]);
  else if(match&&match[2]&&request.method==='POST')result=retryBatch(env.DB,reporter,match[1],await readBody(request));

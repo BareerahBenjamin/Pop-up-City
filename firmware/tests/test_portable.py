@@ -28,6 +28,7 @@ class PortablePackage(unittest.TestCase):
         app = bytearray(boot)
         elf = b'fixture ELF identity'
         app[32:36] = b'\x32\x54\xcd\xab'
+        app[48:55] = b'fixture'
         app[176:208] = hashlib.sha256(elf).digest()
         table = b''
         for label, kind, subtype, offset, size in [('nvs',1,2,0x9000,0x6000),('phy_init',1,1,0xf000,0x1000),('factory',0,0,0x10000,0x680000),('event_save',1,2,0x690000,0x170000)]:
@@ -54,6 +55,14 @@ class PortablePackage(unittest.TestCase):
 
     def test_valid_without_usb(self):
         self.assertEqual(flash.validate(self.root)['chip'],'esp32c3')
+
+    def test_default_segmented_write_preserves_nvs(self):
+        with patch.object(flash, '__file__', str(self.root / 'flash.py')), patch.object(flash.sys, 'argv', ['flash.py', '--port', 'COM4']), patch.object(flash.subprocess, 'call', return_value=0) as call:
+            self.assertEqual(flash.main(), 0)
+        command = call.call_args.args[0]
+        self.assertEqual(command[-6:], ['0x0', str(self.root.resolve() / 'bootloader.bin'), '0x8000', str(self.root.resolve() / 'partition-table.bin'), '0x10000', str(self.root.resolve() / 'application.bin')])
+        self.assertNotIn('erase_flash', command)
+        self.assertNotIn(str(self.root / 'full.bin'), command)
 
     def test_harness_rejected(self):
         self.manifest['artifact_kind']='component-check'
@@ -119,9 +128,15 @@ class PortablePackage(unittest.TestCase):
         project = self.root.resolve() / 'project';build = self.root.resolve() / 'build'
         (project / 'main').mkdir(parents=True);build.mkdir()
         (project / 'main/app_main.c').write_text('fixture')
+        (project.parent / 'assets/fonts').mkdir(parents=True)
+        shutil.copyfile(ROOT.parent / 'assets/fonts/OFL.txt',project.parent / 'assets/fonts/OFL.txt')
+        shutil.copyfile(ROOT.parent / 'assets/fonts/PIXEL_FONT_LICENSE.txt',project.parent / 'assets/fonts/PIXEL_FONT_LICENSE.txt')
+        (project / 'main/generated').mkdir()
+        shutil.copyfile(ROOT / 'main/generated/cjk_font.json',project / 'main/generated/cjk_font.json')
         shutil.copytree(ROOT / 'portable', project / 'portable', ignore=shutil.ignore_patterns('__pycache__'))
         (project / 'portable/private-board.json').write_text('private device token')
         (project / 'partitions.csv').write_bytes(self.data['partitions.csv'])
+        shutil.copyfile(ROOT / 'legacy-provenance.json', project / 'legacy-provenance.json')
         gates = {key:True for key in ['startup_binding', 'planet_name', 'friend_mutual_consent',
             'host_single_batch', 'reconnect_reconciliation', 'display_input', 'persistent_identity', 'host_tests']}
         (project / 'product-readiness.json').write_text(json.dumps({**gates, 'version':'fixture'}))
@@ -139,6 +154,14 @@ class PortablePackage(unittest.TestCase):
         with zipfile.ZipFile(output) as archive:
             self.assertNotIn('Pop-up-City-Firmware/private-board.json', archive.namelist())
             self.assertIn('Pop-up-City-Firmware/initialize.py', archive.namelist())
+        stale = bytearray((build / 'FoloToy-AI-Passport.bin').read_bytes())
+        stale[48:80] = b'old-version'.ljust(32, b'\0')
+        (build / 'FoloToy-AI-Passport.bin').write_bytes(stale)
+        with patch.object(packager, 'ROOT', project), patch.object(packager.subprocess, 'run'):
+            with self.assertRaisesRegex(ValueError, 'binary version'):
+                packager.package(build, self.root / 'stale-release.zip')
+        self.assertFalse((self.root / 'stale-release.zip').exists())
+
 
 
 if __name__ == '__main__':unittest.main()

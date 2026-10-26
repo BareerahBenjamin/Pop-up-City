@@ -33,3 +33,12 @@ firmware/sdkconfig.old
 firmware/build/
 firmware/**/__pycache__/
 firmware/portable/.venv/
+
+# Private provisioning credentials
+popcity-event-profile*.json
+
+tmp/
+
+identity-*.json
+
+**/identity-*.json

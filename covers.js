@@ -6,6 +6,7 @@ export const MAX_GAME_JAM_FIRMWARE_BYTES = 0x690000;
 export const MAX_GAME_JAM_COVER_BYTES = 3 * 1024 * 1024;
 export const GAME_JAM_BODY_LIMIT = MAX_GAME_JAM_FIRMWARE_BYTES + MAX_GAME_JAM_COVER_BYTES + 64000;
 export function bodyLimit(method, pathname) {
+  if (['POST','PATCH'].includes(method) && /^\/api\/events\/[a-f0-9-]{36}\/materials(?:\/[a-f0-9-]{36})?$/.test(pathname)) return Math.ceil(20 * 1024 * 1024 / 3) * 4 + 16000;
   if (method === 'POST' && pathname === '/api/game-jam/projects') return GAME_JAM_BODY_LIMIT;
   if (method === 'POST' && pathname === '/api/admin/events/import') return 512 * 1024;
   return (method === 'POST' && pathname === '/api/events') ||

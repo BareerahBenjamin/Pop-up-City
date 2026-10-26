@@ -28,6 +28,10 @@ for(const [index,[title,category,location,offset,hour]] of samples.entries()){
 for(const [title,start,end] of [['城市共创驻留计划',now-7*86400,now+10*86400],['邻里开放工作坊',now+5*86400,now+12*86400],['上周的开放分享',now-8*86400,now-8*86400+5400]]){
   db.raw.prepare("INSERT INTO events(id,title,description,category,location,starts_at,ends_at,capacity,host_id,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,30,?,'published',?,?)").run(randomUUID(),title,'本地分组展示示例，具体参与安排请查看活动详情。','共创','共同客厅',start,end,member,now,now);
 }
+// Website-only example courseware. Existing hardware fixtures remain unchanged.
+const materialEvent=db.raw.prepare("SELECT id FROM events WHERE title='上周的开放分享'").get().id;
+const sampleHtml=Buffer.from('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>示例课后讲义</title><style>body{font-family:system-ui,sans-serif;background:#fff5f8;color:#3d2031;max-width:720px;margin:40px auto;padding:24px;line-height:1.8}h1{color:#af005f}button{padding:12px 20px;background:#af005f;color:white;border:0;border-radius:20px}</style><h1>把课堂里的灵感带回日常</h1><p>本页是本地预览的示例讲义，不是真实导师课件。</p><h2>课后练习</h2><p>记录一个想继续探索的问题，并写下明天可以尝试的一小步。</p><button onclick="document.getElementById(\'answer\').hidden=false">展开练习提示</button><p id="answer" hidden>从一个具体的生活场景开始，把想法变成可以行动的计划。</p></html>');
+db.raw.prepare('INSERT INTO event_materials VALUES(?,?,?,?,?,?,?,1,?,?,?)').run(randomUUID(),materialEvent,'示例课后讲义','示例讲义.html','html',sampleHtml,sampleHtml.length,member,now,now);
 const server=createApplication(config,{db,mailer:null});
 const [application]=server.listeners('request');server.removeAllListeners('request');
 const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8').replace('<body class="site-layout">','<body class="site-layout"><p class="preview-notice" role="status">本地交互预览 · 全部为示例数据 · 重启即清空 · 不发送邮件</p>');

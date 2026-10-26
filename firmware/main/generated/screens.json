@@ -6,2103 +6,2019 @@
     "length": 8116
   },
   {
+    "key": "配网蓝牙已开启|中性色",
+    "file": "assets/wifi-setup-blufi-active.png",
+    "offset": 8116,
+    "length": 10164
+  },
+  {
     "key": "正在连接|中性色",
     "file": "assets/317bb5c3f9-state-connecting.png",
-    "offset": 8116,
+    "offset": 18280,
     "length": 7556
   },
   {
     "key": "连接失败|中性色",
     "file": "assets/46241fb1ef-state-wifi-failed.png",
-    "offset": 15672,
+    "offset": 25836,
     "length": 9636
   },
   {
     "key": "配网/等待绑定按键说明|中性色",
     "file": "assets/4fcaa68214-wifi-binding-preview-key-guide-1.png",
-    "offset": 25308,
-    "length": 6964
+    "offset": 35472,
+    "length": 6892
   },
   {
     "key": "官网绑定码|中性色",
     "file": "assets/ca378d5440-website-binding-page.png",
-    "offset": 32272,
+    "offset": 42364,
     "length": 9188
   },
   {
     "key": "核对绑定账号|中性色",
     "file": "assets/4a5c31cb11-state-confirm.png",
-    "offset": 41460,
-    "length": 9052
+    "offset": 51552,
+    "length": 12876
   },
   {
     "key": "正在确认绑定|中性色",
     "file": "assets/0d1ce98c27-state-saving.png",
-    "offset": 50512,
+    "offset": 64428,
     "length": 5492
   },
   {
     "key": "绑定成功|草绿",
     "file": "assets/4dafaabc1b-pixel-green-bound.png",
-    "offset": 56004,
-    "length": 8476
+    "offset": 69920,
+    "length": 7980
   },
   {
     "key": "绑定成功|粉色",
     "file": "assets/3f0dbfb689-pixel-pink-bound.png",
-    "offset": 64480,
-    "length": 8476
+    "offset": 77900,
+    "length": 7980
   },
   {
     "key": "绑定成功|天蓝",
     "file": "assets/ca4c0c0158-pixel-blue-bound.png",
-    "offset": 72956,
-    "length": 8476
+    "offset": 85880,
+    "length": 7980
   },
   {
     "key": "绑定成功|杏色",
     "file": "assets/e8c6a62bf7-pixel-apricot-bound.png",
-    "offset": 81432,
-    "length": 8476
+    "offset": 93860,
+    "length": 7980
   },
   {
     "key": "绑定码过期|中性色",
     "file": "assets/0edbcedfec-state-expired.png",
-    "offset": 89908,
+    "offset": 101840,
     "length": 7076
   },
   {
     "key": "拒绝绑定|中性色",
     "file": "assets/83ad54424f-state-rejected.png",
-    "offset": 96984,
+    "offset": 108916,
     "length": 7908
   },
   {
     "key": "官网暂不可用|中性色",
     "file": "assets/cc02159332-state-service.png",
-    "offset": 104892,
+    "offset": 116824,
     "length": 8020
   },
   {
     "key": "收到绑定申请按键说明|中性色",
     "file": "assets/8f6ad495c2-wifi-binding-preview-key-guide-3.png",
-    "offset": 112912,
-    "length": 11776
+    "offset": 124844,
+    "length": 12552
   },
   {
     "key": "欢迎循环动画|草绿#0",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 0,
-    "offset": 124688,
+    "offset": 137396,
     "length": 228
   },
   {
     "key": "欢迎循环动画|草绿#1",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 1,
-    "offset": 124916,
+    "offset": 137624,
     "length": 484
   },
   {
     "key": "欢迎循环动画|草绿#2",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 2,
-    "offset": 125400,
+    "offset": 138108,
     "length": 596
   },
   {
     "key": "欢迎循环动画|草绿#3",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 3,
-    "offset": 125996,
+    "offset": 138704,
     "length": 708
   },
   {
     "key": "欢迎循环动画|草绿#4",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 4,
-    "offset": 126704,
+    "offset": 139412,
     "length": 820
   },
   {
     "key": "欢迎循环动画|草绿#5",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 5,
-    "offset": 127524,
+    "offset": 140232,
     "length": 1012
   },
   {
     "key": "欢迎循环动画|草绿#6",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 6,
-    "offset": 128536,
+    "offset": 141244,
     "length": 1268
   },
   {
     "key": "欢迎循环动画|草绿#7",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 7,
-    "offset": 129804,
+    "offset": 142512,
     "length": 1380
   },
   {
     "key": "欢迎循环动画|草绿#8",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 8,
-    "offset": 131184,
+    "offset": 143892,
     "length": 1492
   },
   {
     "key": "欢迎循环动画|草绿#9",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 9,
-    "offset": 132676,
+    "offset": 145384,
     "length": 1684
   },
   {
     "key": "欢迎循环动画|草绿#10",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 10,
-    "offset": 134360,
+    "offset": 147068,
     "length": 1892
   },
   {
     "key": "欢迎循环动画|草绿#11",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 11,
-    "offset": 136252,
+    "offset": 148960,
     "length": 2004
   },
   {
     "key": "欢迎循环动画|草绿#12",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 12,
-    "offset": 138256,
+    "offset": 150964,
     "length": 2196
   },
   {
     "key": "欢迎循环动画|草绿#13",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 13,
-    "offset": 140452,
+    "offset": 153160,
     "length": 2308
   },
   {
     "key": "欢迎循环动画|草绿#14",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 14,
-    "offset": 142760,
+    "offset": 155468,
     "length": 2420
   },
   {
     "key": "欢迎循环动画|草绿#15",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 15,
-    "offset": 145180,
+    "offset": 157888,
     "length": 2612
   },
   {
     "key": "欢迎循环动画|草绿#16",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 16,
-    "offset": 147792,
+    "offset": 160500,
     "length": 2804
   },
   {
     "key": "欢迎循环动画|草绿#17",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 17,
-    "offset": 150596,
+    "offset": 163304,
     "length": 2964
   },
   {
     "key": "欢迎循环动画|草绿#18",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 18,
-    "offset": 153560,
+    "offset": 166268,
     "length": 2964
   },
   {
     "key": "欢迎循环动画|草绿#19",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 19,
-    "offset": 156524,
+    "offset": 169232,
     "length": 3108
   },
   {
     "key": "欢迎循环动画|草绿#20",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 20,
-    "offset": 159632,
+    "offset": 172340,
     "length": 3300
   },
   {
     "key": "欢迎循环动画|草绿#21",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 21,
-    "offset": 162932,
+    "offset": 175640,
     "length": 3444
   },
   {
     "key": "欢迎循环动画|草绿#22",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 22,
-    "offset": 166376,
+    "offset": 179084,
     "length": 3460
   },
   {
     "key": "欢迎循环动画|草绿#23",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 23,
-    "offset": 169836,
+    "offset": 182544,
     "length": 3668
   },
   {
     "key": "欢迎循环动画|草绿#24",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 24,
-    "offset": 173504,
+    "offset": 186212,
     "length": 3812
   },
   {
     "key": "欢迎循环动画|草绿#25",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 25,
-    "offset": 177316,
+    "offset": 190024,
     "length": 3924
   },
   {
     "key": "欢迎循环动画|草绿#26",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 26,
-    "offset": 181240,
+    "offset": 193948,
     "length": 4036
   },
   {
     "key": "欢迎循环动画|草绿#27",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 27,
-    "offset": 185276,
+    "offset": 197984,
     "length": 4148
   },
   {
     "key": "欢迎循环动画|草绿#28",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 28,
-    "offset": 189424,
+    "offset": 202132,
     "length": 4308
   },
   {
     "key": "欢迎循环动画|草绿#29",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 29,
-    "offset": 193732,
+    "offset": 206440,
     "length": 4308
   },
   {
     "key": "欢迎循环动画|草绿#30",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 30,
-    "offset": 198040,
+    "offset": 210748,
     "length": 4356
   },
   {
     "key": "欢迎循环动画|草绿#31",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 31,
-    "offset": 202396,
+    "offset": 215104,
     "length": 4356
   },
   {
     "key": "欢迎循环动画|草绿#32",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 32,
-    "offset": 206752,
+    "offset": 219460,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|草绿#33",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 33,
-    "offset": 211204,
+    "offset": 223912,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|草绿#34",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 34,
-    "offset": 215656,
+    "offset": 228364,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|草绿#35",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 35,
-    "offset": 220108,
+    "offset": 232816,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|草绿#36",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 36,
-    "offset": 224560,
+    "offset": 237268,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|草绿#37",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 37,
-    "offset": 229012,
+    "offset": 241720,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|草绿#38",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 38,
-    "offset": 233464,
+    "offset": 246172,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|草绿#39",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 39,
-    "offset": 237916,
+    "offset": 250624,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|草绿#40",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 40,
-    "offset": 242368,
+    "offset": 255076,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|草绿#41",
     "file": "assets/d386328629-welcome-checkin-theme-green.gif",
     "page": 41,
-    "offset": 246820,
+    "offset": 259528,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|粉色#0",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 0,
-    "offset": 251272,
+    "offset": 263980,
     "length": 228
   },
   {
     "key": "欢迎循环动画|粉色#1",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 1,
-    "offset": 251500,
+    "offset": 264208,
     "length": 484
   },
   {
     "key": "欢迎循环动画|粉色#2",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 2,
-    "offset": 251984,
+    "offset": 264692,
     "length": 596
   },
   {
     "key": "欢迎循环动画|粉色#3",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 3,
-    "offset": 252580,
+    "offset": 265288,
     "length": 708
   },
   {
     "key": "欢迎循环动画|粉色#4",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 4,
-    "offset": 253288,
+    "offset": 265996,
     "length": 820
   },
   {
     "key": "欢迎循环动画|粉色#5",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 5,
-    "offset": 254108,
+    "offset": 266816,
     "length": 1012
   },
   {
     "key": "欢迎循环动画|粉色#6",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 6,
-    "offset": 255120,
+    "offset": 267828,
     "length": 1268
   },
   {
     "key": "欢迎循环动画|粉色#7",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 7,
-    "offset": 256388,
+    "offset": 269096,
     "length": 1380
   },
   {
     "key": "欢迎循环动画|粉色#8",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 8,
-    "offset": 257768,
+    "offset": 270476,
     "length": 1492
   },
   {
     "key": "欢迎循环动画|粉色#9",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 9,
-    "offset": 259260,
+    "offset": 271968,
     "length": 1684
   },
   {
     "key": "欢迎循环动画|粉色#10",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 10,
-    "offset": 260944,
+    "offset": 273652,
     "length": 1892
   },
   {
     "key": "欢迎循环动画|粉色#11",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 11,
-    "offset": 262836,
+    "offset": 275544,
     "length": 2004
   },
   {
     "key": "欢迎循环动画|粉色#12",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 12,
-    "offset": 264840,
+    "offset": 277548,
     "length": 2196
   },
   {
     "key": "欢迎循环动画|粉色#13",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 13,
-    "offset": 267036,
+    "offset": 279744,
     "length": 2308
   },
   {
     "key": "欢迎循环动画|粉色#14",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 14,
-    "offset": 269344,
+    "offset": 282052,
     "length": 2420
   },
   {
     "key": "欢迎循环动画|粉色#15",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 15,
-    "offset": 271764,
+    "offset": 284472,
     "length": 2612
   },
   {
     "key": "欢迎循环动画|粉色#16",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 16,
-    "offset": 274376,
+    "offset": 287084,
     "length": 2804
   },
   {
     "key": "欢迎循环动画|粉色#17",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 17,
-    "offset": 277180,
+    "offset": 289888,
     "length": 2964
   },
   {
     "key": "欢迎循环动画|粉色#18",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 18,
-    "offset": 280144,
+    "offset": 292852,
     "length": 2964
   },
   {
     "key": "欢迎循环动画|粉色#19",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 19,
-    "offset": 283108,
+    "offset": 295816,
     "length": 3108
   },
   {
     "key": "欢迎循环动画|粉色#20",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 20,
-    "offset": 286216,
+    "offset": 298924,
     "length": 3300
   },
   {
     "key": "欢迎循环动画|粉色#21",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 21,
-    "offset": 289516,
+    "offset": 302224,
     "length": 3444
   },
   {
     "key": "欢迎循环动画|粉色#22",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 22,
-    "offset": 292960,
+    "offset": 305668,
     "length": 3460
   },
   {
     "key": "欢迎循环动画|粉色#23",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 23,
-    "offset": 296420,
+    "offset": 309128,
     "length": 3668
   },
   {
     "key": "欢迎循环动画|粉色#24",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 24,
-    "offset": 300088,
+    "offset": 312796,
     "length": 3812
   },
   {
     "key": "欢迎循环动画|粉色#25",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 25,
-    "offset": 303900,
+    "offset": 316608,
     "length": 3924
   },
   {
     "key": "欢迎循环动画|粉色#26",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 26,
-    "offset": 307824,
+    "offset": 320532,
     "length": 4036
   },
   {
     "key": "欢迎循环动画|粉色#27",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 27,
-    "offset": 311860,
+    "offset": 324568,
     "length": 4148
   },
   {
     "key": "欢迎循环动画|粉色#28",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 28,
-    "offset": 316008,
+    "offset": 328716,
     "length": 4308
   },
   {
     "key": "欢迎循环动画|粉色#29",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 29,
-    "offset": 320316,
+    "offset": 333024,
     "length": 4308
   },
   {
     "key": "欢迎循环动画|粉色#30",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 30,
-    "offset": 324624,
+    "offset": 337332,
     "length": 4356
   },
   {
     "key": "欢迎循环动画|粉色#31",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 31,
-    "offset": 328980,
+    "offset": 341688,
     "length": 4356
   },
   {
     "key": "欢迎循环动画|粉色#32",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 32,
-    "offset": 333336,
+    "offset": 346044,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|粉色#33",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 33,
-    "offset": 337788,
+    "offset": 350496,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|粉色#34",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 34,
-    "offset": 342240,
+    "offset": 354948,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|粉色#35",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 35,
-    "offset": 346692,
+    "offset": 359400,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|粉色#36",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 36,
-    "offset": 351144,
+    "offset": 363852,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|粉色#37",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 37,
-    "offset": 355596,
+    "offset": 368304,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|粉色#38",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 38,
-    "offset": 360048,
+    "offset": 372756,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|粉色#39",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 39,
-    "offset": 364500,
+    "offset": 377208,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|粉色#40",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 40,
-    "offset": 368952,
+    "offset": 381660,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|粉色#41",
     "file": "assets/ba9af7870c-welcome-checkin-theme-pink.gif",
     "page": 41,
-    "offset": 373404,
+    "offset": 386112,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|天蓝#0",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 0,
-    "offset": 377856,
+    "offset": 390564,
     "length": 228
   },
   {
     "key": "欢迎循环动画|天蓝#1",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 1,
-    "offset": 378084,
+    "offset": 390792,
     "length": 484
   },
   {
     "key": "欢迎循环动画|天蓝#2",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 2,
-    "offset": 378568,
+    "offset": 391276,
     "length": 596
   },
   {
     "key": "欢迎循环动画|天蓝#3",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 3,
-    "offset": 379164,
+    "offset": 391872,
     "length": 708
   },
   {
     "key": "欢迎循环动画|天蓝#4",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 4,
-    "offset": 379872,
+    "offset": 392580,
     "length": 820
   },
   {
     "key": "欢迎循环动画|天蓝#5",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 5,
-    "offset": 380692,
+    "offset": 393400,
     "length": 1012
   },
   {
     "key": "欢迎循环动画|天蓝#6",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 6,
-    "offset": 381704,
+    "offset": 394412,
     "length": 1268
   },
   {
     "key": "欢迎循环动画|天蓝#7",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 7,
-    "offset": 382972,
+    "offset": 395680,
     "length": 1380
   },
   {
     "key": "欢迎循环动画|天蓝#8",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 8,
-    "offset": 384352,
+    "offset": 397060,
     "length": 1492
   },
   {
     "key": "欢迎循环动画|天蓝#9",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 9,
-    "offset": 385844,
+    "offset": 398552,
     "length": 1684
   },
   {
     "key": "欢迎循环动画|天蓝#10",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 10,
-    "offset": 387528,
+    "offset": 400236,
     "length": 1892
   },
   {
     "key": "欢迎循环动画|天蓝#11",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 11,
-    "offset": 389420,
+    "offset": 402128,
     "length": 2004
   },
   {
     "key": "欢迎循环动画|天蓝#12",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 12,
-    "offset": 391424,
+    "offset": 404132,
     "length": 2196
   },
   {
     "key": "欢迎循环动画|天蓝#13",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 13,
-    "offset": 393620,
+    "offset": 406328,
     "length": 2308
   },
   {
     "key": "欢迎循环动画|天蓝#14",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 14,
-    "offset": 395928,
+    "offset": 408636,
     "length": 2420
   },
   {
     "key": "欢迎循环动画|天蓝#15",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 15,
-    "offset": 398348,
+    "offset": 411056,
     "length": 2612
   },
   {
     "key": "欢迎循环动画|天蓝#16",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 16,
-    "offset": 400960,
+    "offset": 413668,
     "length": 2804
   },
   {
     "key": "欢迎循环动画|天蓝#17",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 17,
-    "offset": 403764,
+    "offset": 416472,
     "length": 2964
   },
   {
     "key": "欢迎循环动画|天蓝#18",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 18,
-    "offset": 406728,
+    "offset": 419436,
     "length": 2964
   },
   {
     "key": "欢迎循环动画|天蓝#19",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 19,
-    "offset": 409692,
+    "offset": 422400,
     "length": 3108
   },
   {
     "key": "欢迎循环动画|天蓝#20",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 20,
-    "offset": 412800,
+    "offset": 425508,
     "length": 3300
   },
   {
     "key": "欢迎循环动画|天蓝#21",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 21,
-    "offset": 416100,
+    "offset": 428808,
     "length": 3444
   },
   {
     "key": "欢迎循环动画|天蓝#22",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 22,
-    "offset": 419544,
+    "offset": 432252,
     "length": 3460
   },
   {
     "key": "欢迎循环动画|天蓝#23",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 23,
-    "offset": 423004,
+    "offset": 435712,
     "length": 3668
   },
   {
     "key": "欢迎循环动画|天蓝#24",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 24,
-    "offset": 426672,
+    "offset": 439380,
     "length": 3812
   },
   {
     "key": "欢迎循环动画|天蓝#25",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 25,
-    "offset": 430484,
+    "offset": 443192,
     "length": 3924
   },
   {
     "key": "欢迎循环动画|天蓝#26",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 26,
-    "offset": 434408,
+    "offset": 447116,
     "length": 4036
   },
   {
     "key": "欢迎循环动画|天蓝#27",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 27,
-    "offset": 438444,
+    "offset": 451152,
     "length": 4148
   },
   {
     "key": "欢迎循环动画|天蓝#28",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 28,
-    "offset": 442592,
+    "offset": 455300,
     "length": 4308
   },
   {
     "key": "欢迎循环动画|天蓝#29",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 29,
-    "offset": 446900,
+    "offset": 459608,
     "length": 4308
   },
   {
     "key": "欢迎循环动画|天蓝#30",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 30,
-    "offset": 451208,
+    "offset": 463916,
     "length": 4356
   },
   {
     "key": "欢迎循环动画|天蓝#31",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 31,
-    "offset": 455564,
+    "offset": 468272,
     "length": 4356
   },
   {
     "key": "欢迎循环动画|天蓝#32",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 32,
-    "offset": 459920,
+    "offset": 472628,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|天蓝#33",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 33,
-    "offset": 464372,
+    "offset": 477080,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|天蓝#34",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 34,
-    "offset": 468824,
+    "offset": 481532,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|天蓝#35",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 35,
-    "offset": 473276,
+    "offset": 485984,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|天蓝#36",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 36,
-    "offset": 477728,
+    "offset": 490436,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|天蓝#37",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 37,
-    "offset": 482180,
+    "offset": 494888,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|天蓝#38",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 38,
-    "offset": 486632,
+    "offset": 499340,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|天蓝#39",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 39,
-    "offset": 491084,
+    "offset": 503792,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|天蓝#40",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 40,
-    "offset": 495536,
+    "offset": 508244,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|天蓝#41",
     "file": "assets/45ea8162d3-welcome-checkin-theme-blue.gif",
     "page": 41,
-    "offset": 499988,
+    "offset": 512696,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|杏色#0",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 0,
-    "offset": 504440,
+    "offset": 517148,
     "length": 228
   },
   {
     "key": "欢迎循环动画|杏色#1",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 1,
-    "offset": 504668,
+    "offset": 517376,
     "length": 484
   },
   {
     "key": "欢迎循环动画|杏色#2",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 2,
-    "offset": 505152,
+    "offset": 517860,
     "length": 596
   },
   {
     "key": "欢迎循环动画|杏色#3",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 3,
-    "offset": 505748,
+    "offset": 518456,
     "length": 708
   },
   {
     "key": "欢迎循环动画|杏色#4",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 4,
-    "offset": 506456,
+    "offset": 519164,
     "length": 820
   },
   {
     "key": "欢迎循环动画|杏色#5",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 5,
-    "offset": 507276,
+    "offset": 519984,
     "length": 1012
   },
   {
     "key": "欢迎循环动画|杏色#6",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 6,
-    "offset": 508288,
+    "offset": 520996,
     "length": 1268
   },
   {
     "key": "欢迎循环动画|杏色#7",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 7,
-    "offset": 509556,
+    "offset": 522264,
     "length": 1380
   },
   {
     "key": "欢迎循环动画|杏色#8",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 8,
-    "offset": 510936,
+    "offset": 523644,
     "length": 1492
   },
   {
     "key": "欢迎循环动画|杏色#9",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 9,
-    "offset": 512428,
+    "offset": 525136,
     "length": 1684
   },
   {
     "key": "欢迎循环动画|杏色#10",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 10,
-    "offset": 514112,
+    "offset": 526820,
     "length": 1892
   },
   {
     "key": "欢迎循环动画|杏色#11",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 11,
-    "offset": 516004,
+    "offset": 528712,
     "length": 2004
   },
   {
     "key": "欢迎循环动画|杏色#12",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 12,
-    "offset": 518008,
+    "offset": 530716,
     "length": 2196
   },
   {
     "key": "欢迎循环动画|杏色#13",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 13,
-    "offset": 520204,
+    "offset": 532912,
     "length": 2308
   },
   {
     "key": "欢迎循环动画|杏色#14",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 14,
-    "offset": 522512,
+    "offset": 535220,
     "length": 2420
   },
   {
     "key": "欢迎循环动画|杏色#15",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 15,
-    "offset": 524932,
+    "offset": 537640,
     "length": 2612
   },
   {
     "key": "欢迎循环动画|杏色#16",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 16,
-    "offset": 527544,
+    "offset": 540252,
     "length": 2804
   },
   {
     "key": "欢迎循环动画|杏色#17",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 17,
-    "offset": 530348,
+    "offset": 543056,
     "length": 2964
   },
   {
     "key": "欢迎循环动画|杏色#18",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 18,
-    "offset": 533312,
+    "offset": 546020,
     "length": 2964
   },
   {
     "key": "欢迎循环动画|杏色#19",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 19,
-    "offset": 536276,
+    "offset": 548984,
     "length": 3108
   },
   {
     "key": "欢迎循环动画|杏色#20",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 20,
-    "offset": 539384,
+    "offset": 552092,
     "length": 3300
   },
   {
     "key": "欢迎循环动画|杏色#21",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 21,
-    "offset": 542684,
+    "offset": 555392,
     "length": 3444
   },
   {
     "key": "欢迎循环动画|杏色#22",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 22,
-    "offset": 546128,
+    "offset": 558836,
     "length": 3460
   },
   {
     "key": "欢迎循环动画|杏色#23",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 23,
-    "offset": 549588,
+    "offset": 562296,
     "length": 3668
   },
   {
     "key": "欢迎循环动画|杏色#24",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 24,
-    "offset": 553256,
+    "offset": 565964,
     "length": 3812
   },
   {
     "key": "欢迎循环动画|杏色#25",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 25,
-    "offset": 557068,
+    "offset": 569776,
     "length": 3924
   },
   {
     "key": "欢迎循环动画|杏色#26",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 26,
-    "offset": 560992,
+    "offset": 573700,
     "length": 4036
   },
   {
     "key": "欢迎循环动画|杏色#27",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 27,
-    "offset": 565028,
+    "offset": 577736,
     "length": 4148
   },
   {
     "key": "欢迎循环动画|杏色#28",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 28,
-    "offset": 569176,
+    "offset": 581884,
     "length": 4308
   },
   {
     "key": "欢迎循环动画|杏色#29",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 29,
-    "offset": 573484,
+    "offset": 586192,
     "length": 4308
   },
   {
     "key": "欢迎循环动画|杏色#30",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 30,
-    "offset": 577792,
+    "offset": 590500,
     "length": 4356
   },
   {
     "key": "欢迎循环动画|杏色#31",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 31,
-    "offset": 582148,
+    "offset": 594856,
     "length": 4356
   },
   {
     "key": "欢迎循环动画|杏色#32",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 32,
-    "offset": 586504,
+    "offset": 599212,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|杏色#33",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 33,
-    "offset": 590956,
+    "offset": 603664,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|杏色#34",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 34,
-    "offset": 595408,
+    "offset": 608116,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|杏色#35",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 35,
-    "offset": 599860,
+    "offset": 612568,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|杏色#36",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 36,
-    "offset": 604312,
+    "offset": 617020,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|杏色#37",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 37,
-    "offset": 608764,
+    "offset": 621472,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|杏色#38",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 38,
-    "offset": 613216,
+    "offset": 625924,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|杏色#39",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 39,
-    "offset": 617668,
+    "offset": 630376,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|杏色#40",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 40,
-    "offset": 622120,
+    "offset": 634828,
     "length": 4452
   },
   {
     "key": "欢迎循环动画|杏色#41",
     "file": "assets/5a71d1beac-welcome-checkin-theme-apricot.gif",
     "page": 41,
-    "offset": 626572,
+    "offset": 639280,
     "length": 4452
   },
   {
     "key": "星球页按键说明|草绿",
-    "file": "assets/help-ok-planet-green.png",
-    "offset": 631024,
-    "length": 13960
+    "file": "assets/029e2b9631-planet-help-green.png",
+    "offset": 643732,
+    "length": 12412
   },
   {
     "key": "星球页按键说明|粉色",
-    "file": "assets/help-ok-planet-pink.png",
-    "offset": 644984,
-    "length": 13960
+    "file": "assets/d444d38ec3-planet-help-pink.png",
+    "offset": 656144,
+    "length": 12412
   },
   {
     "key": "星球页按键说明|天蓝",
-    "file": "assets/help-ok-planet-blue.png",
-    "offset": 658944,
-    "length": 13936
+    "file": "assets/0a11d4b7fc-planet-help-blue.png",
+    "offset": 668556,
+    "length": 12412
   },
   {
     "key": "星球页按键说明|杏色",
-    "file": "assets/help-ok-planet-apricot.png",
-    "offset": 672880,
-    "length": 13936
+    "file": "assets/6e369aec41-planet-help-apricot.png",
+    "offset": 680968,
+    "length": 12412
   },
   {
     "key": "准备换网|草绿",
     "file": "assets/1eb78c2fef-change-network-green-ready.png",
-    "offset": 686816,
+    "offset": 693380,
     "length": 10420
   },
   {
     "key": "准备换网|粉色",
     "file": "assets/3b6cdd71ac-change-network-pink-ready.png",
-    "offset": 697236,
+    "offset": 703800,
     "length": 10420
   },
   {
     "key": "准备换网|天蓝",
     "file": "assets/1cc79185f5-change-network-blue-ready.png",
-    "offset": 707656,
+    "offset": 714220,
     "length": 10420
   },
   {
     "key": "准备换网|杏色",
     "file": "assets/6c2c15b9d1-change-network-apricot-ready.png",
-    "offset": 718076,
+    "offset": 724640,
     "length": 10420
   },
   {
     "key": "连接新网络|草绿",
     "file": "assets/7fb2c72cae-wifi-binding-preview-change-network-pink-connecting-green.png",
-    "offset": 728496,
+    "offset": 735060,
     "length": 7044
   },
   {
     "key": "连接新网络|粉色",
     "file": "assets/8ea82e3c79-change-network-pink-connecting.png",
-    "offset": 735540,
+    "offset": 742104,
     "length": 7044
   },
   {
     "key": "连接新网络|天蓝",
     "file": "assets/cc982142ce-wifi-binding-preview-change-network-pink-connecting-blue.png",
-    "offset": 742584,
+    "offset": 749148,
     "length": 7044
   },
   {
     "key": "连接新网络|杏色",
     "file": "assets/465f4ef5fc-wifi-binding-preview-change-network-pink-connecting-apricot.png",
-    "offset": 749628,
+    "offset": 756192,
     "length": 7044
   },
   {
     "key": "换网成功|草绿",
     "file": "assets/c64803d6ee-wifi-binding-preview-change-network-pink-success-green.png",
-    "offset": 756672,
+    "offset": 763236,
     "length": 7932
   },
   {
     "key": "换网成功|粉色",
     "file": "assets/bb5cafd913-change-network-pink-success.png",
-    "offset": 764604,
+    "offset": 771168,
     "length": 7932
   },
   {
     "key": "换网成功|天蓝",
     "file": "assets/759d33952d-wifi-binding-preview-change-network-pink-success-blue.png",
-    "offset": 772536,
+    "offset": 779100,
     "length": 7932
   },
   {
     "key": "换网成功|杏色",
     "file": "assets/36d06e8a7c-wifi-binding-preview-change-network-pink-success-apricot.png",
-    "offset": 780468,
+    "offset": 787032,
     "length": 7932
   },
   {
     "key": "换网失败|草绿",
     "file": "assets/498d714599-wifi-binding-preview-change-network-pink-failed-green.png",
-    "offset": 788400,
+    "offset": 794964,
     "length": 9348
   },
   {
     "key": "换网失败|粉色",
     "file": "assets/4ee33ec1ce-change-network-pink-failed.png",
-    "offset": 797748,
+    "offset": 804312,
     "length": 9348
   },
   {
     "key": "换网失败|天蓝",
     "file": "assets/c232ebb8d4-wifi-binding-preview-change-network-pink-failed-blue.png",
-    "offset": 807096,
+    "offset": 813660,
     "length": 9348
   },
   {
     "key": "换网失败|杏色",
     "file": "assets/1a53e03dca-wifi-binding-preview-change-network-pink-failed-apricot.png",
-    "offset": 816444,
+    "offset": 823008,
     "length": 9348
   },
   {
     "key": "恢复旧网络|草绿",
     "file": "assets/14ce19b6bb-wifi-binding-preview-change-network-pink-restore-green.png",
-    "offset": 825792,
+    "offset": 832356,
     "length": 9300
   },
   {
     "key": "恢复旧网络|粉色",
     "file": "assets/fcf8cae37d-change-network-pink-restore.png",
-    "offset": 835092,
+    "offset": 841656,
     "length": 9300
   },
   {
     "key": "恢复旧网络|天蓝",
     "file": "assets/781b680fe3-wifi-binding-preview-change-network-pink-restore-blue.png",
-    "offset": 844392,
+    "offset": 850956,
     "length": 9300
   },
   {
     "key": "恢复旧网络|杏色",
     "file": "assets/ed48bf32b8-wifi-binding-preview-change-network-pink-restore-apricot.png",
-    "offset": 853692,
+    "offset": 860256,
     "length": 9300
   },
   {
     "key": "换网按键说明|草绿",
-    "file": "assets/help-ok-change-green.png",
-    "offset": 862992,
-    "length": 12428
+    "file": "assets/339953a47a-palette-exports-wifi-binding-preview-change-network-help-green.png",
+    "offset": 869556,
+    "length": 9700
   },
   {
     "key": "换网按键说明|粉色",
-    "file": "assets/help-ok-change-pink.png",
-    "offset": 875420,
-    "length": 12428
+    "file": "assets/ec87bcc270-wifi-binding-preview-change-network-help.png",
+    "offset": 879256,
+    "length": 9700
   },
   {
     "key": "换网按键说明|天蓝",
-    "file": "assets/help-ok-change-blue.png",
-    "offset": 887848,
-    "length": 12412
+    "file": "assets/07c7d7c4c3-palette-exports-wifi-binding-preview-change-network-help-blue.png",
+    "offset": 888956,
+    "length": 9700
   },
   {
     "key": "换网按键说明|杏色",
-    "file": "assets/help-ok-change-apricot.png",
-    "offset": 900260,
-    "length": 12412
+    "file": "assets/2c74604322-palette-exports-wifi-binding-preview-change-network-help-apricot.png",
+    "offset": 898656,
+    "length": 9700
   },
   {
     "key": "修正后的名字按键说明|草绿",
-    "file": "assets/help-ok-name-green.png",
-    "offset": 912672,
-    "length": 12632
+    "file": "assets/9885f5d7e8-name-help-confirmed-green.png",
+    "offset": 908356,
+    "length": 9932
   },
   {
     "key": "修正后的名字按键说明|粉色",
-    "file": "assets/help-ok-name-pink.png",
-    "offset": 925304,
-    "length": 12632
+    "file": "assets/cae88e1a35-name-help-confirmed-pink.png",
+    "offset": 918288,
+    "length": 9932
   },
   {
     "key": "修正后的名字按键说明|天蓝",
-    "file": "assets/help-ok-name-blue.png",
-    "offset": 937936,
-    "length": 12616
+    "file": "assets/7b3631b0f0-name-help-confirmed-blue.png",
+    "offset": 928220,
+    "length": 9932
   },
   {
     "key": "修正后的名字按键说明|杏色",
-    "file": "assets/help-ok-name-apricot.png",
-    "offset": 950552,
-    "length": 12616
+    "file": "assets/a73502917e-name-help-confirmed-apricot.png",
+    "offset": 938152,
+    "length": 9932
   },
   {
     "key": "核对码|草绿",
     "file": "assets/2b2d5ab99c-green-code.png",
-    "offset": 963168,
+    "offset": 948084,
     "length": 7316
   },
   {
     "key": "核对码|粉色",
     "file": "assets/6c18c64b37-pink-code.png",
-    "offset": 970484,
+    "offset": 955400,
     "length": 7316
   },
   {
     "key": "核对码|天蓝",
     "file": "assets/98dc8f0f28-blue-code.png",
-    "offset": 977800,
+    "offset": 962716,
     "length": 7316
   },
   {
     "key": "核对码|杏色",
     "file": "assets/134d352e6a-apricot-code.png",
-    "offset": 985116,
+    "offset": 970032,
     "length": 7316
   },
   {
     "key": "交友核对页按键说明|草绿",
-    "file": "assets/help-ok-friend-green.png",
-    "offset": 992432,
-    "length": 14144
+    "file": "assets/700e877c88-approved-friend-green.png",
+    "offset": 977348,
+    "length": 12740
   },
   {
     "key": "交友核对页按键说明|粉色",
-    "file": "assets/help-ok-friend-pink.png",
-    "offset": 1006576,
-    "length": 14144
+    "file": "assets/aeda12680f-approved-friend-pink.png",
+    "offset": 990088,
+    "length": 12740
   },
   {
     "key": "交友核对页按键说明|天蓝",
-    "file": "assets/help-ok-friend-blue.png",
-    "offset": 1020720,
-    "length": 14120
+    "file": "assets/88909ff6db-approved-friend-blue.png",
+    "offset": 1002828,
+    "length": 12740
   },
   {
     "key": "交友核对页按键说明|杏色",
-    "file": "assets/help-ok-friend-apricot.png",
-    "offset": 1034840,
-    "length": 14120
+    "file": "assets/e9954b6886-approved-friend-apricot.png",
+    "offset": 1015568,
+    "length": 12740
   },
   {
     "key": "交友成功静态|草绿",
-    "file": "assets/6ee3ebde37-green-success.png",
-    "offset": 1048960,
-    "length": 6604
+    "file": "assets/678dedbe97-green-success.png",
+    "offset": 1028308,
+    "length": 5420
   },
   {
     "key": "交友成功静态|粉色",
-    "file": "assets/0833d28d3f-pink-success.png",
-    "offset": 1055564,
-    "length": 6604
+    "file": "assets/cda8017a75-pink-success.png",
+    "offset": 1033728,
+    "length": 5420
   },
   {
     "key": "交友成功静态|天蓝",
-    "file": "assets/2d9bdde130-blue-success.png",
-    "offset": 1062168,
-    "length": 6604
+    "file": "assets/c7be8ba6c7-blue-success.png",
+    "offset": 1039148,
+    "length": 5420
   },
   {
     "key": "交友成功静态|杏色",
-    "file": "assets/561a2f7253-apricot-success.png",
-    "offset": 1068772,
-    "length": 6604
+    "file": "assets/34bed8bea8-apricot-success.png",
+    "offset": 1044568,
+    "length": 5420
   },
   {
     "key": "等待成员|草绿",
     "file": "assets/38f12c91ab-host-green-wait.png",
-    "offset": 1075376,
+    "offset": 1049988,
     "length": 7532
   },
   {
     "key": "等待成员|粉色",
     "file": "assets/ffa4295d45-host-pink-wait.png",
-    "offset": 1082908,
+    "offset": 1057520,
     "length": 7532
   },
   {
     "key": "等待成员|天蓝",
     "file": "assets/32f8006ab8-host-blue-wait.png",
-    "offset": 1090440,
+    "offset": 1065052,
     "length": 7532
   },
   {
     "key": "等待成员|杏色",
     "file": "assets/67fcd08cc0-host-apricot-wait.png",
-    "offset": 1097972,
+    "offset": 1072584,
     "length": 7532
   },
   {
     "key": "选择成员|草绿",
     "file": "assets/251350b273-host-green-choose.png",
-    "offset": 1105504,
+    "offset": 1080116,
     "length": 7100
   },
   {
     "key": "选择成员|粉色",
     "file": "assets/e9d37c4283-host-pink-choose.png",
-    "offset": 1112604,
+    "offset": 1087216,
     "length": 7100
   },
   {
     "key": "选择成员|天蓝",
     "file": "assets/bf8ee50cea-host-blue-choose.png",
-    "offset": 1119704,
+    "offset": 1094316,
     "length": 7100
   },
   {
     "key": "选择成员|杏色",
     "file": "assets/3f453b79b8-host-apricot-choose.png",
-    "offset": 1126804,
+    "offset": 1101416,
     "length": 7100
   },
   {
     "key": "当前成员离开|草绿",
     "file": "assets/ba9ec14112-host-green-gone.png",
-    "offset": 1133904,
+    "offset": 1108516,
     "length": 7180
   },
   {
     "key": "当前成员离开|粉色",
     "file": "assets/25f6fd8f9f-host-pink-gone.png",
-    "offset": 1141084,
+    "offset": 1115696,
     "length": 7180
   },
   {
     "key": "当前成员离开|天蓝",
     "file": "assets/8b83cac487-host-blue-gone.png",
-    "offset": 1148264,
+    "offset": 1122876,
     "length": 7180
   },
   {
     "key": "当前成员离开|杏色",
     "file": "assets/5a9671fdd6-host-apricot-gone.png",
-    "offset": 1155444,
+    "offset": 1130056,
     "length": 7180
   },
   {
     "key": "保存中|草绿",
     "file": "assets/5ed1d10f88-host-green-saving.png",
-    "offset": 1162624,
+    "offset": 1137236,
     "length": 6588
   },
   {
     "key": "保存中|粉色",
     "file": "assets/e6a75dd570-host-pink-saving.png",
-    "offset": 1169212,
+    "offset": 1143824,
     "length": 6588
   },
   {
     "key": "保存中|天蓝",
     "file": "assets/89cc975556-host-blue-saving.png",
-    "offset": 1175800,
+    "offset": 1150412,
     "length": 6588
   },
   {
     "key": "保存中|杏色",
     "file": "assets/564c052280-host-apricot-saving.png",
-    "offset": 1182388,
+    "offset": 1157000,
     "length": 6588
   },
   {
     "key": "签到成功|草绿",
     "file": "assets/0c0d0579f4-host-green-success.png",
-    "offset": 1188976,
+    "offset": 1163588,
     "length": 6972
   },
   {
     "key": "签到成功|粉色",
     "file": "assets/3b503af6ec-host-pink-success.png",
-    "offset": 1195948,
+    "offset": 1170560,
     "length": 6972
   },
   {
     "key": "签到成功|天蓝",
     "file": "assets/e7ce6350bc-host-blue-success.png",
-    "offset": 1202920,
+    "offset": 1177532,
     "length": 6972
   },
   {
     "key": "签到成功|杏色",
     "file": "assets/a2e798dc12-host-apricot-success.png",
-    "offset": 1209892,
+    "offset": 1184504,
     "length": 6972
   },
   {
     "key": "保存失败|草绿",
     "file": "assets/db52ec5a75-host-green-failed.png",
-    "offset": 1216864,
+    "offset": 1191476,
     "length": 6828
   },
   {
     "key": "保存失败|粉色",
     "file": "assets/86b5a896ca-host-pink-failed.png",
-    "offset": 1223692,
+    "offset": 1198304,
     "length": 6828
   },
   {
     "key": "保存失败|天蓝",
     "file": "assets/759a57756f-host-blue-failed.png",
-    "offset": 1230520,
+    "offset": 1205132,
     "length": 6828
   },
   {
     "key": "保存失败|杏色",
     "file": "assets/f4ca4ff9c8-host-apricot-failed.png",
-    "offset": 1237348,
+    "offset": 1211960,
     "length": 6828
   },
   {
     "key": "签到页按键说明|草绿",
-    "file": "assets/help-ok-host-green.png",
-    "offset": 1244176,
-    "length": 18916
+    "file": "assets/e7f0889d49-approved-checkin-green.png",
+    "offset": 1218788,
+    "length": 16488
   },
   {
     "key": "签到页按键说明|粉色",
-    "file": "assets/help-ok-host-pink.png",
-    "offset": 1263092,
-    "length": 18916
+    "file": "assets/90882eb6ea-approved-checkin-pink.png",
+    "offset": 1235276,
+    "length": 16488
   },
   {
     "key": "签到页按键说明|天蓝",
-    "file": "assets/help-ok-host-blue.png",
-    "offset": 1282008,
-    "length": 18892
+    "file": "assets/76e3283634-approved-checkin-blue.png",
+    "offset": 1251764,
+    "length": 16488
   },
   {
     "key": "签到页按键说明|杏色",
-    "file": "assets/help-ok-host-apricot.png",
-    "offset": 1300900,
-    "length": 18892
+    "file": "assets/f7de4786a8-approved-checkin-apricot.png",
+    "offset": 1268252,
+    "length": 16488
   },
   {
     "key": "批量处理中|草绿",
     "file": "assets/65ec69f28e-green-saving.png",
-    "offset": 1319792,
+    "offset": 1284740,
     "length": 8260
   },
   {
     "key": "批量处理中|粉色",
     "file": "assets/03e5401c06-pink-saving.png",
-    "offset": 1328052,
+    "offset": 1293000,
     "length": 8260
   },
   {
     "key": "批量处理中|天蓝",
     "file": "assets/0472ee3a4b-blue-saving.png",
-    "offset": 1336312,
+    "offset": 1301260,
     "length": 8260
   },
   {
     "key": "批量处理中|杏色",
     "file": "assets/d481be4b00-apricot-saving.png",
-    "offset": 1344572,
+    "offset": 1309520,
     "length": 8260
   },
   {
     "key": "全部成功|草绿",
     "file": "assets/ba1a5a1147-green-success.png",
-    "offset": 1352832,
+    "offset": 1317780,
     "length": 7524
   },
   {
     "key": "全部成功|粉色",
     "file": "assets/4677d08551-pink-success.png",
-    "offset": 1360356,
+    "offset": 1325304,
     "length": 7524
   },
   {
     "key": "全部成功|天蓝",
     "file": "assets/0cef791169-blue-success.png",
-    "offset": 1367880,
+    "offset": 1332828,
     "length": 7524
   },
   {
     "key": "全部成功|杏色",
     "file": "assets/a567fa28e6-apricot-success.png",
-    "offset": 1375404,
+    "offset": 1340352,
     "length": 7524
   },
   {
     "key": "部分成功|草绿",
     "file": "assets/543ddce849-green-partial.png",
-    "offset": 1382928,
+    "offset": 1347876,
     "length": 7628
   },
   {
     "key": "部分成功|粉色",
     "file": "assets/6e2da3dd9b-pink-partial.png",
-    "offset": 1390556,
+    "offset": 1355504,
     "length": 7628
   },
   {
     "key": "部分成功|天蓝",
     "file": "assets/74e133f12a-blue-partial.png",
-    "offset": 1398184,
+    "offset": 1363132,
     "length": 7628
   },
   {
     "key": "部分成功|杏色",
     "file": "assets/e7550e1c15-apricot-partial.png",
-    "offset": 1405812,
+    "offset": 1370760,
     "length": 7628
   },
   {
     "key": "全部失败|草绿",
     "file": "assets/171d27ecc8-green-failed.png",
-    "offset": 1413440,
+    "offset": 1378388,
     "length": 7836
   },
   {
     "key": "全部失败|粉色",
     "file": "assets/0ef84d0a83-pink-failed.png",
-    "offset": 1421276,
+    "offset": 1386224,
     "length": 7836
   },
   {
     "key": "全部失败|天蓝",
     "file": "assets/dcb868cd0b-blue-failed.png",
-    "offset": 1429112,
+    "offset": 1394060,
     "length": 7836
   },
   {
     "key": "全部失败|杏色",
     "file": "assets/4ef24d37c3-apricot-failed.png",
-    "offset": 1436948,
+    "offset": 1401896,
     "length": 7836
   },
   {
     "key": "重连后核对|草绿",
     "file": "assets/44ecb56cf1-green-checking.png",
-    "offset": 1444784,
+    "offset": 1409732,
     "length": 7820
   },
   {
     "key": "重连后核对|粉色",
     "file": "assets/ce37a1c619-pink-checking.png",
-    "offset": 1452604,
+    "offset": 1417552,
     "length": 7820
   },
   {
     "key": "重连后核对|天蓝",
     "file": "assets/cdd44247c1-blue-checking.png",
-    "offset": 1460424,
+    "offset": 1425372,
     "length": 7820
   },
   {
     "key": "重连后核对|杏色",
     "file": "assets/a171e3f71e-apricot-checking.png",
-    "offset": 1468244,
+    "offset": 1433192,
     "length": 7820
   },
   {
     "key": "部分成功/失败按键说明|草绿",
-    "file": "assets/help-ok-batch-result-green.png",
-    "offset": 1476064,
-    "length": 15976
+    "file": "assets/1db6f5e977-approved-batch-result-green.png",
+    "offset": 1441012,
+    "length": 12800
   },
   {
     "key": "部分成功/失败按键说明|粉色",
-    "file": "assets/help-ok-batch-result-pink.png",
-    "offset": 1492040,
-    "length": 15976
+    "file": "assets/df59959866-approved-batch-result-pink.png",
+    "offset": 1453812,
+    "length": 12800
   },
   {
     "key": "部分成功/失败按键说明|天蓝",
-    "file": "assets/help-ok-batch-result-blue.png",
-    "offset": 1508016,
-    "length": 15952
+    "file": "assets/8e6ae82d10-approved-batch-result-blue.png",
+    "offset": 1466612,
+    "length": 12800
   },
   {
     "key": "部分成功/失败按键说明|杏色",
-    "file": "assets/help-ok-batch-result-apricot.png",
-    "offset": 1523968,
-    "length": 15952
+    "file": "assets/2f4115f81b-approved-batch-result-apricot.png",
+    "offset": 1479412,
+    "length": 12800
   },
   {
     "key": "全部成功按键说明|草绿",
-    "file": "assets/help-ok-batch-success-green.png",
-    "offset": 1539920,
-    "length": 12204
+    "file": "assets/b96b54e276-approved-batch-success-green.png",
+    "offset": 1492212,
+    "length": 9620
   },
   {
     "key": "全部成功按键说明|粉色",
-    "file": "assets/help-ok-batch-success-pink.png",
-    "offset": 1552124,
-    "length": 12204
+    "file": "assets/9fc29fadd0-approved-batch-success-pink.png",
+    "offset": 1501832,
+    "length": 9620
   },
   {
     "key": "全部成功按键说明|天蓝",
-    "file": "assets/help-ok-batch-success-blue.png",
-    "offset": 1564328,
-    "length": 12188
+    "file": "assets/40ef3bdc01-approved-batch-success-blue.png",
+    "offset": 1511452,
+    "length": 9620
   },
   {
     "key": "全部成功按键说明|杏色",
-    "file": "assets/help-ok-batch-success-apricot.png",
-    "offset": 1576516,
-    "length": 12188
+    "file": "assets/6437616aba-approved-batch-success-apricot.png",
+    "offset": 1521072,
+    "length": 9620
   },
   {
     "key": "总名单首屏|草绿",
     "file": "assets/a47fa47558-checkin-preview-blue-roster-1-green.png",
-    "offset": 1588704,
+    "offset": 1530692,
     "length": 12644
   },
   {
     "key": "总名单首屏|粉色",
     "file": "assets/7eda4cbb85-checkin-preview-blue-roster-1-pink.png",
-    "offset": 1601348,
+    "offset": 1543336,
     "length": 12644
   },
   {
     "key": "总名单首屏|天蓝",
     "file": "assets/d2fc2d731c-blue-roster-1.png",
-    "offset": 1613992,
+    "offset": 1555980,
     "length": 12644
   },
   {
     "key": "总名单首屏|杏色",
     "file": "assets/53d3419a77-checkin-preview-blue-roster-1-apricot.png",
-    "offset": 1626636,
+    "offset": 1568624,
     "length": 12644
   },
   {
     "key": "总名单滚动后|草绿",
     "file": "assets/bc8fe332ca-checkin-preview-blue-roster-2-green.png",
-    "offset": 1639280,
+    "offset": 1581268,
     "length": 12708
   },
   {
     "key": "总名单滚动后|粉色",
     "file": "assets/ff13a50475-checkin-preview-blue-roster-2-pink.png",
-    "offset": 1651988,
+    "offset": 1593976,
     "length": 12708
   },
   {
     "key": "总名单滚动后|天蓝",
     "file": "assets/a13774d16b-blue-roster-2.png",
-    "offset": 1664696,
+    "offset": 1606684,
     "length": 12708
   },
   {
     "key": "总名单滚动后|杏色",
     "file": "assets/c91d9647b1-checkin-preview-blue-roster-2-apricot.png",
-    "offset": 1677404,
+    "offset": 1619392,
     "length": 12708
   },
   {
     "key": "总名单按键说明|草绿",
-    "file": "assets/help-ok-roster-green.png",
-    "offset": 1690112,
-    "length": 14488
+    "file": "assets/5d5ec645c9-checkin-preview-arrow-help-green-roster.png",
+    "offset": 1632100,
+    "length": 13120
   },
   {
     "key": "总名单按键说明|粉色",
-    "file": "assets/help-ok-roster-pink.png",
-    "offset": 1704600,
-    "length": 14488
+    "file": "assets/ac6a2f526e-checkin-preview-arrow-help-pink-roster.png",
+    "offset": 1645220,
+    "length": 13120
   },
   {
     "key": "总名单按键说明|天蓝",
-    "file": "assets/help-ok-roster-blue.png",
-    "offset": 1719088,
-    "length": 14464
+    "file": "assets/5994e51e18-checkin-preview-arrow-help-blue-roster.png",
+    "offset": 1658340,
+    "length": 13120
   },
   {
     "key": "总名单按键说明|杏色",
-    "file": "assets/help-ok-roster-apricot.png",
-    "offset": 1733552,
-    "length": 14464
+    "file": "assets/44b852602b-checkin-preview-arrow-help-apricot-roster.png",
+    "offset": 1671460,
+    "length": 13120
   },
   {
     "key": "处理中按键锁定示意|草绿",
-    "file": "assets/help-ok-locked-green.png",
-    "offset": 1748016,
-    "length": 10304
+    "file": "assets/d977ffc966-approved-locked-green.png",
+    "offset": 1684580,
+    "length": 9892
   },
   {
     "key": "处理中按键锁定示意|粉色",
-    "file": "assets/help-ok-locked-pink.png",
-    "offset": 1758320,
-    "length": 10304
+    "file": "assets/171b853ce2-approved-locked-pink.png",
+    "offset": 1694472,
+    "length": 9892
   },
   {
     "key": "处理中按键锁定示意|天蓝",
-    "file": "assets/help-ok-locked-blue.png",
-    "offset": 1768624,
-    "length": 10304
+    "file": "assets/ba491230b5-approved-locked-blue.png",
+    "offset": 1704364,
+    "length": 9892
   },
   {
     "key": "处理中按键锁定示意|杏色",
-    "file": "assets/help-ok-locked-apricot.png",
-    "offset": 1778928,
-    "length": 10304
+    "file": "assets/4e861fc1c0-approved-locked-apricot.png",
+    "offset": 1714256,
+    "length": 9892
   },
   {
     "key": "加载页|草绿",
     "file": "assets/896145e183-green.png",
-    "offset": 1789232,
+    "offset": 1724148,
     "length": 2704
   },
   {
     "key": "加载页|粉色",
     "file": "assets/32f3d01c09-pink.png",
-    "offset": 1791936,
+    "offset": 1726852,
     "length": 2700
   },
   {
     "key": "加载页|天蓝",
     "file": "assets/b33c3adfca-blue.png",
-    "offset": 1794636,
+    "offset": 1729552,
     "length": 2704
   },
   {
     "key": "加载页|杏色",
     "file": "assets/d3749171bf-apricot.png",
-    "offset": 1797340,
+    "offset": 1732256,
     "length": 2692
   },
   {
-    "key": "交友等待对方按键说明|草绿",
-    "file": "assets/help-ok-friend-wait-green.png",
-    "offset": 1800032,
-    "length": 13556
+    "key": "交友寻找中|草绿",
+    "file": "assets/friend-searching-0.png",
+    "offset": 1734948,
+    "length": 6132
   },
   {
-    "key": "交友等待对方按键说明|粉色",
-    "file": "assets/help-ok-friend-wait-pink.png",
-    "offset": 1813588,
-    "length": 13556
+    "key": "交友寻找中|粉色",
+    "file": "assets/friend-searching-1.png",
+    "offset": 1741080,
+    "length": 6132
   },
   {
-    "key": "交友等待对方按键说明|天蓝",
-    "file": "assets/help-ok-friend-wait-blue.png",
-    "offset": 1827144,
-    "length": 13540
+    "key": "交友寻找中|天蓝",
+    "file": "assets/friend-searching-2.png",
+    "offset": 1747212,
+    "length": 6132
   },
   {
-    "key": "交友等待对方按键说明|杏色",
-    "file": "assets/help-ok-friend-wait-apricot.png",
-    "offset": 1840684,
-    "length": 13540
+    "key": "交友寻找中|杏色",
+    "file": "assets/friend-searching-3.png",
+    "offset": 1753344,
+    "length": 6132
   },
   {
-    "key": "交友重试按键说明|草绿",
-    "file": "assets/help-ok-friend-retry-green.png",
-    "offset": 1854224,
-    "length": 13212
-  },
-  {
-    "key": "交友重试按键说明|粉色",
-    "file": "assets/help-ok-friend-retry-pink.png",
-    "offset": 1867436,
-    "length": 13212
-  },
-  {
-    "key": "交友重试按键说明|天蓝",
-    "file": "assets/help-ok-friend-retry-blue.png",
-    "offset": 1880648,
-    "length": 13196
-  },
-  {
-    "key": "交友重试按键说明|杏色",
-    "file": "assets/help-ok-friend-retry-apricot.png",
-    "offset": 1893844,
-    "length": 13196
-  },
-  {
-    "key": "交友成功停留按键说明|草绿",
-    "file": "assets/help-ok-friend-done-green.png",
-    "offset": 1907040,
-    "length": 8184
-  },
-  {
-    "key": "交友成功停留按键说明|粉色",
-    "file": "assets/help-ok-friend-done-pink.png",
-    "offset": 1915224,
-    "length": 8184
-  },
-  {
-    "key": "交友成功停留按键说明|天蓝",
-    "file": "assets/help-ok-friend-done-blue.png",
-    "offset": 1923408,
-    "length": 8176
-  },
-  {
-    "key": "交友成功停留按键说明|杏色",
-    "file": "assets/help-ok-friend-done-apricot.png",
-    "offset": 1931584,
-    "length": 8176
-  },
-  {
-    "key": "等待成员按键说明|草绿",
-    "file": "assets/help-ok-host-wait-green.png",
-    "offset": 1939760,
-    "length": 15968
-  },
-  {
-    "key": "等待成员按键说明|粉色",
-    "file": "assets/help-ok-host-wait-pink.png",
-    "offset": 1955728,
-    "length": 15968
-  },
-  {
-    "key": "等待成员按键说明|天蓝",
-    "file": "assets/help-ok-host-wait-blue.png",
-    "offset": 1971696,
-    "length": 15944
-  },
-  {
-    "key": "等待成员按键说明|杏色",
-    "file": "assets/help-ok-host-wait-apricot.png",
-    "offset": 1987640,
-    "length": 15944
-  },
-  {
-    "key": "成员已离开按键说明|草绿",
-    "file": "assets/help-ok-host-gone-green.png",
-    "offset": 2003584,
-    "length": 16248
-  },
-  {
-    "key": "成员已离开按键说明|粉色",
-    "file": "assets/help-ok-host-gone-pink.png",
-    "offset": 2019832,
-    "length": 16248
-  },
-  {
-    "key": "成员已离开按键说明|天蓝",
-    "file": "assets/help-ok-host-gone-blue.png",
-    "offset": 2036080,
-    "length": 16224
-  },
-  {
-    "key": "成员已离开按键说明|杏色",
-    "file": "assets/help-ok-host-gone-apricot.png",
-    "offset": 2052304,
-    "length": 16224
+    "key": "加载页|中性色",
+    "file": "assets/loading-neutral-approved.png",
+    "offset": 1759476,
+    "length": 2704
   }
 ]

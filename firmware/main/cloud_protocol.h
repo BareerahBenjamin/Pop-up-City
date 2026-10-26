@@ -9,12 +9,16 @@ typedef enum {PC_CLOUD_OK,PC_CLOUD_INVALID,PC_CLOUD_TRANSPORT,PC_CLOUD_HTTP,
 typedef bool (*pc_cloud_sign_fn)(void *,const char *,char[65]);
 /* Bounded, complete response, NUL terminated; all credentials stay in adapter context. */
 typedef bool (*pc_cloud_transport_fn)(void *,bool,const char *,const char *,char *,size_t,int *);
+/* Optional adapter owns allocation after TLS handshake. Caller always frees
+ * *out, including failure. On success, allocated_bytes reports the actual allocation (including NUL),
+ * bounded by capacity. */
+typedef bool (*pc_cloud_transport_alloc_fn)(void *,bool,const char *,const char *,char **,size_t,size_t *allocated_bytes,int *);
 typedef void (*pc_cloud_pulse_fn)(void *,unsigned);
 typedef struct {
  pc_store *store;pc_state *state;pc_feedback feedback;pc_personal_visual personal;
  pc_cloud_sign_fn sign;void *sign_context;
- pc_cloud_transport_fn transport;void *transport_context;
- char active_activity_id[37],known_activity_id[37];bool known_activity_closed;
+ pc_cloud_transport_fn transport;pc_cloud_transport_alloc_fn transport_alloc;void *transport_context;
+ char active_activity_id[37],known_activity_id[37],active_title[257];bool known_activity_closed;
  uint8_t active_title_bitmap[768];bool active_title_valid;
  uint64_t server_time;uint32_t server_ms;bool clock_known;
  uint32_t (*monotonic_ms)(void *);void *clock_context;

@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { sign } from './checkin-session.mjs';
 import { HardwareError, hardwareKind } from '../hardware.js';
 import { planetSnapshotInTransaction } from '../planet.js';
-import { personalNameBitmap,nameBitmap } from './name-bitmap.mjs';
+import { personalNameBitmap,activityTitleBitmap,NAME_BITMAP_STYLE,NAME_FONT_SHA256 } from './name-bitmap.mjs';
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const uuid = value => typeof value === 'string' && /^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(value);
 const fail = (status, code, message) => { throw new HardwareError(status, code, message); };
@@ -74,7 +74,7 @@ export function runtimeState(db, reporter, { knownActivityId = null, compact = f
       }
     }
     const identity = { device_id: board.id, member_id: board.member_id, member_name: board.nickname,
-      binding_version: hash([board.id, board.member_id, board.created_at]), name_version: hash(board.nickname), device_kind: 'user' };
+      binding_version: hash([board.id, board.member_id, board.created_at]), name_version: hash([board.nickname,NAME_BITMAP_STYLE,NAME_FONT_SHA256]), device_kind: 'user' };
     const planet = { planet_id: snapshot.planetId, palette_id: snapshot.paletteId, revision: snapshot.revision,
       state_version: snapshot.pixelPlanet.stateVersion, ai_stage: snapshot.pixelPlanet.aiStage,
       house_unlocked: snapshot.pixelPlanet.aiStage >= 1, lake_unlocked: snapshot.pixelPlanet.lakeUnlocked };
@@ -107,6 +107,6 @@ export async function runtimeRoute(request, env, url, reporter) {
   if (url.pathname !== '/api/device/runtime' && !match) return null;
   if (request.method !== 'GET') fail(405, 'METHOD_NOT_ALLOWED', '此接口仅支持查询');
   const data = match ? operationResult(env.DB, reporter, match[1]) : runtimeState(env.DB, reporter, { knownActivityId: url.searchParams.get('known_activity_id'), compact: url.searchParams.get('view') === 'board' });
-  if (!match) { const bitmap=await personalNameBitmap(data.identity.member_name); data.identity.name_bitmap=bitmap.hex; data.identity.name_bitmap_width=bitmap.width; if(data.host.can_check_in)data.host.active_title_bitmap=await nameBitmap(data.host.active_activities[0].title); }
+  if (!match) { const bitmap=await personalNameBitmap(data.identity.member_name); data.identity.name_bitmap=bitmap.hex; data.identity.name_bitmap_style=NAME_BITMAP_STYLE; data.identity.name_bitmap_width=bitmap.width; if(data.host.can_check_in)data.host.active_title_bitmap=await activityTitleBitmap(data.host.active_activities[0].title); }
   return wrap(reporter, data);
 }

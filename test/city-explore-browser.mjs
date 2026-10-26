@@ -12,7 +12,11 @@ const config=loadConfig({PORT:'3344',PUBLIC_ORIGIN:origin,AUTH_PEPPER:randomByte
 const member=randomUUID(),token=randomBytes(32).toString('hex');
 db.raw.prepare("INSERT INTO members(id,email,nickname,role,status,created_at,updated_at) VALUES(?,?,?,'member','active',?,?)").run(member,'calendar@example.test','月历测试邻居',now,now);
 db.raw.prepare('INSERT INTO sessions VALUES(?,?,?,?)').run(createHash('sha256').update(token).digest('hex'),member,now+86400,now);
-const base=Date.parse('2026-10-20T00:00:00+08:00')/1000;
+const testDay=new Date((now+2*86400+8*3600)*1000).toISOString().slice(0,10),testMonth=testDay.slice(0,7);
+const base=Date.parse(`${testDay}T00:00:00+08:00`)/1000;
+const [testYear,testMonthNumber]=testMonth.split('-').map(Number);
+const monthCells=Math.ceil((new Date(Date.UTC(testYear,testMonthNumber-1,1)).getUTCDay()+new Date(Date.UTC(testYear,testMonthNumber,0)).getUTCDate())/7)*7;
+const selectTestDay=async page=>{await page.locator('#calendar-month').fill(testMonth);await page.locator(`.month-date[data-date="${testDay}"]`).click();};
 function event(title,location,start,end,status='published',category='共创',host=member){
   const id=randomUUID();db.raw.prepare('INSERT INTO events(id,title,description,category,location,starts_at,ends_at,capacity,volunteer_capacity,host_id,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,20,2,?,?,?,?)').run(id,title,'本地浏览器验证示例，不会写入现有数据库。',category,location,start,end,host,status,now,now);return id;
 }
@@ -36,9 +40,8 @@ try{
   const ordered=db.raw.prepare("SELECT id FROM events WHERE status='published' AND ends_at>unixepoch() AND ends_at-starts_at<259200 ORDER BY starts_at,ends_at,id").all().map(e=>e.id);
   assert.deepEqual(await page.locator('[data-event-group=nearby] .card-link').evaluateAll(links=>links.map(a=>a.hash.split('/')[1])),ordered);
   await page.locator('#campus-detail [data-target="calendar-title"]').click();assert.equal(new URL(page.url()).hash,'#events');
-  await page.locator('#calendar-month').fill('2026-10');
-  await page.locator('.month-date[data-date="2026-10-20"]').click();
-  assert.equal(await page.locator('.month-grid td').count(),35);
+  await selectTestDay(page);
+  assert.equal(await page.locator('.month-grid td').count(),monthCells);
   assert.equal(await page.locator('.month-day-list > li').count(),6);
   assert.match(await page.locator('.month-day-list').innerText(),/跨夜的相遇/);
   assert.doesNotMatch(await page.locator('.month-day-list').innerText(),/午夜准时结束|待审核活动|取消的活动/);
@@ -48,16 +51,23 @@ try{
   await page.waitForFunction(id=>document.querySelector(`.month-day-list .interest-button[data-id="${id}"]`)?.getAttribute('aria-pressed')==='true',first);
   assert.equal(db.raw.prepare('SELECT COUNT(*) n FROM event_interests WHERE event_id=? AND member_id=?').get(first,member).n,1);
   await heart.click();await page.waitForFunction(id=>document.querySelector(`.month-day-list .interest-button[data-id="${id}"]`)?.getAttribute('aria-pressed')==='false',first);
-  await page.locator('[data-action="month-next"]').click();assert.equal(await page.locator('#calendar-month').inputValue(),'2026-11');
-  await page.locator('[data-action="month-prev"]').click();assert.equal(await page.locator('#calendar-month').inputValue(),'2026-10');
+  await page.locator('#calendar-month').fill('2026-10');await page.locator('.month-date[data-date="2026-10-20"]').click();
+  await page.getByRole('button',{name:'下一天',exact:true}).click();assert.equal(await page.locator('#calendar-month').inputValue(),'2026-10');
+  assert.equal(await page.locator('.month-selected .month-date').getAttribute('data-date'),'2026-10-21');
+  await page.getByRole('button',{name:'上一天',exact:true}).click();assert.equal(await page.locator('.month-selected .month-date').getAttribute('data-date'),'2026-10-20');
+  await page.locator('.month-date[data-date="2026-10-31"]').click();await page.getByRole('button',{name:'下一天',exact:true}).click();assert.equal(await page.locator('#calendar-month').inputValue(),'2026-11');
+  assert.equal(await page.locator('.month-selected .month-date').getAttribute('data-date'),'2026-11-01');
+  await page.getByRole('button',{name:'上一天',exact:true}).click();assert.equal(await page.locator('.month-selected .month-date').getAttribute('data-date'),'2026-10-31');
+  await page.getByRole('button',{name:'今天',exact:true}).click();
+  const venueToday=await page.evaluate(()=>eventDay(Date.now()/1000));assert.equal(await page.locator('.month-selected .month-date').getAttribute('data-date'),venueToday);
   await page.locator('#calendar-month').fill('2028-02');assert.equal(await page.locator('.month-date[data-date="2028-02-29"]').count(),1);
   await page.locator('#calendar-month').fill('2026-08');assert.equal(await page.locator('.month-grid td').count(),42);
-  await page.locator('#calendar-month').fill('2026-10');await page.locator('.month-date[data-date="2026-10-20"]').click();
+  await selectTestDay(page);
   for(const days of [1,3,7]){await page.locator(`[data-action="calendar-view"][data-days="${days}"]`).click();assert.equal(await page.locator('.calendar-day').count(),days);}
   await page.locator('[data-action="month-view"]').click();
   await page.locator('#discovery-query').fill('月历课程体验');await page.locator('#discovery-form').getByRole('button',{name:'搜索',exact:true}).click();
   assert.equal(await page.locator('.month-event').count(),1);await page.locator('[data-action="discovery-reset"]').click();
-  await page.locator('.month-date[data-date="2026-10-20"]').click();await page.locator('.month-calendar').screenshot({path:`${out}/calendar-desktop.png`});
+  await selectTestDay(page);await page.locator('.month-calendar').screenshot({path:`${out}/calendar-desktop.png`});
   await page.locator(`.month-day-list a[href="#event/${first}"]`).click();await page.locator('.detail-cover').waitFor();assert.match(await page.locator('.detail-cover').innerText(),/月历课程体验/);
   await page.goto(origin+'/#events');await page.locator('.campus-map-image').evaluate(i=>i.decode());
   await page.locator('.campus-marker[data-place="e"]').click();assert.match(await page.locator('#campus-detail-title').innerText(),/E栋/);
@@ -81,12 +91,12 @@ try{
     await page.setViewportSize({width,height:850});await page.goto(origin+'/#events');await page.locator('#campus-viewport').waitFor();
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,`map overflow ${width}`);
     if(width===375)await page.locator('#campus-map').screenshot({path:`${out}/map-mobile.png`});
-    await page.goto(origin+'/#events');await page.locator('#calendar-month').fill('2026-10');await page.locator('.month-date[data-date="2026-10-20"]').click();
+    await page.goto(origin+'/#events');await selectTestDay(page);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,`calendar overflow ${width}`);
     if(width===375)await page.locator('.month-calendar').screenshot({path:`${out}/calendar-mobile.png`});
   }
   const guest=await browser.newContext({viewport:{width:375,height:850}}),guestPage=await guest.newPage();
-  await guestPage.goto(origin+'/#events');await guestPage.locator('#calendar-month').fill('2026-10');await guestPage.locator('.month-date[data-date="2026-10-20"]').click();await guestPage.locator(`.month-day-list .interest-button[data-id="${first}"]`).click();await guestPage.locator('#login-request-form').waitFor();
+  await guestPage.goto(origin+'/#events');await selectTestDay(guestPage);await guestPage.locator(`.month-day-list .interest-button[data-id="${first}"]`).click();await guestPage.locator('#login-request-form').waitFor();
   // A long-running event must never displace near-term cards, and past events stay collapsed.
   // A different host keeps these overlapping calendar fixtures valid under host scheduling rules.
   const longHost=randomUUID();db.raw.prepare("INSERT INTO members(id,email,nickname,status,created_at,updated_at) VALUES(?,?,?,'active',?,?)").run(longHost,'long-host@example.test','长期活动发起人',now,now);
@@ -185,7 +195,7 @@ try{
   assert.equal(await page.getByRole('button',{name:'确认删除活动',exact:true}).isEnabled(),true);assert.equal(await active.count(),1);
   await page.getByRole('button',{name:'确认删除活动',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('#modal').open);
   assert.equal(await active.count(),0);await page.reload();await page.locator('[data-action="admin-tab"][data-tab="events"]').click();await page.locator('#admin-events-title').waitFor();assert.equal(await active.count(),0);
-  await page.goto(origin+'/#events');await page.locator('#calendar-month').fill('2026-10');await page.locator('.month-date[data-date="2026-10-20"]').click();
+  await page.goto(origin+'/#events');await selectTestDay(page);
   assert.equal(await page.locator(`a[href="#event/${first}"]`).count(),0);
   assert.doesNotMatch(await page.locator('.month-calendar').innerText(),/取消的活动/);
   await page.locator('.campus-marker[data-place="e"]').click();assert.equal(await page.locator(`.campus-event-list a[href="#event/${first}"]`).count(),0);

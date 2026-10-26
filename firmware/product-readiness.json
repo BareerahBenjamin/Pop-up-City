@@ -1,5 +1,5 @@
 {
-  "version": "0.2.0-rc2",
+  "version": "0.2.0-rc40-checkin-return",
   "startup_binding": true,
   "planet_name": true,
   "friend_mutual_consent": true,
@@ -8,7 +8,9 @@
   "display_input": true,
   "persistent_identity": true,
   "host_tests": true,
-  "notes": "RC2 integrates authenticated self/peer avatar hair length/color and shirt color with 15 reviewed hair mappings; immutable receipts restore the original appearance after reboot. Source/host verified first-device candidate, not a stable release. Physical acceptance, Windows/Linux USB, organizer app-ID uniqueness and controlled cross-firmware save preservation remain unverified. Do not flash automatically or erase the whole chip.",
+  "notes": "RC39 retained; single-success OK queues explicit worker return before UI transition. Returning/navigation restores host worker state; checked selection advances or clears, clearing stale candidate. List unchanged. Physical acceptance pending.",
   "stage": "first-device-acceptance-candidate",
-  "device_tests": "not_run"
+  "device_tests": "not_run",
+  "legacy_source_equivalence": "not claimed; application layer replaced",
+  "cross_app_save_test": "not_run"
 }

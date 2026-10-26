@@ -30,17 +30,21 @@ def initialize(port, profile_path, identity_path):
     connection.rts = False
     connection.port = port
     connection.open()
+    connection.reset_input_buffer()
     try:
         deadline = time.monotonic() + 25
         challenge = None
+        request_nonce = secrets.token_hex(16)
+        connection.write(b'PC_INIT_HELLO ' + request_nonce.encode() + b'\n')
+        connection.flush()
         while time.monotonic() < deadline:
             line = connection.readline(1024).decode('ascii', errors='ignore').strip()
-            match = re.fullmatch(r'PC_INIT_READY ([a-f0-9]{32}) ([a-f0-9]{12})', line)
+            match = re.fullmatch(r'PC_INIT_CHALLENGE ' + request_nonce + r' ([a-f0-9]{32}) ([a-f0-9]{12})', line)
             if match:
                 challenge = match.groups()
                 break
         if not challenge:
-            raise RuntimeError('Board did not request initialization; it may already be initialized. No identity was changed.')
+            raise RuntimeError('No fresh initialization handshake; check matching firmware and whether this board is already initialized. No identity was changed.')
         nonce, board = challenge
         if identity_path.exists():
             identity = json.loads(identity_path.read_text(encoding='utf-8'))
@@ -86,8 +90,10 @@ def initialize(port, profile_path, identity_path):
             if line == 'PC_INIT_OK ' + device:
                 print('Device identity saved. Continue Wi-Fi setup and website binding on this board.')
                 return
+            if re.fullmatch(r'PC_INIT_CHECK (?:[a-z]+=[01] ?)+', line):
+                print(line)
             if line.startswith('PC_INIT_ERROR '):
-                raise RuntimeError('Board refused initialization; existing identity/save was not replaced')
+                raise RuntimeError('Board refused initialization (code ' + line.removeprefix('PC_INIT_ERROR ') + '); existing identity/save was not replaced')
         raise RuntimeError('No save acknowledgement received. Keep the private identity file; do not generate a replacement.')
     finally:
         connection.close()
