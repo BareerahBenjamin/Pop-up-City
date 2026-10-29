@@ -12,7 +12,7 @@ function expandPlanetReport(adapter){
  const observer=new MutationObserver(()=>{if(!frame.isConnected)adapter.restore?.();});observer.observe(document.body,{childList:true,subtree:true});
  adapter.restore=()=>{observer.disconnect();frame.classList.remove('planet-report-expanded');document.body.style.overflow=overflow;for(const [node,inert]of hidden)node.inert=inert;adapter.restore=null;};
 }
-function websitePlanetReport(model,base,report){
+function websitePlanetReport(model,base,report,currentSnapshot=null){
  if(!report)return base;
  const status={...base.status,open:report.open===true,opensAt:report.opens_at};
  if(!report.open)return {...base,status};
@@ -32,9 +32,20 @@ function websitePlanetReport(model,base,report){
  for(const row of rows)if(Object.hasOwn(counts,row.category))counts[row.category]++;
  const issues=[report.note,'实际参与伙伴与共同活动记录尚未同步'];
  if(unmapped.size)issues.push('部分活动沿用原分类（'+[...unmapped].join('、')+'），计入参与／发起总数，未换算为学习、创造或娱乐。');
- return {...base,status,ready:true,cutoff:report.cutoff_at,rows,counts,contributions,hostCount:report.counts.hosted,partnerCount:null,
+ const phase=currentSnapshot?{...base.phase,copy:currentSnapshot.caption+'。'+base.phase.copy}:base.phase;
+ return {...base,phase,status,ready:true,cutoff:report.cutoff_at,rows,counts,contributions,hostCount:report.counts.hosted,partnerCount:null,
   friends:report.records.friends.map(person=>({id:person.id,name:person.nickname,avatar:null,establishedAt:iso(person.established_at),shared:null})),
-  companions:null,snapshot:null,finalized:false,freezeEligible:false,issues};
+  companions:null,snapshot:currentSnapshot,finalized:false,freezeEligible:false,issues};
+}
+function captureCurrentReportPlanet(adapter){
+ const {view}=adapter;
+ const capturedAt=new Date().toISOString();
+ const date=new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(capturedAt));
+ const caption='当前星球 · 拍摄于 '+date+'（上海时间）';
+ const canvas=view.stellarScene.capturePhoto({width:1080,height:1080,planetFraction:.58});
+ // The date also travels with the image when it is saved outside the report.
+ const ctx=canvas.getContext('2d');ctx.fillStyle='#65705e';ctx.font='24px sans-serif';ctx.textAlign='center';ctx.fillText(caption,540,1032,1000);
+ return {image_url:canvas.toDataURL('image/png'),captured_at:capturedAt,caption,view_key:'website-current',source:'current'};
 }
 function mountPlanetReportEntry(){
  const frame=document.getElementById('planet-frame');if(!frame)return null;
@@ -42,16 +53,16 @@ function mountPlanetReportEntry(){
  if(!model||!reports||!state.me)return null;
  if(planetReportFrames.has(doc))return planetReportFrames.get(doc);
  const owner=state.me.id;if(view.HerstoryIdentity.getProfile().userId!==owner)return null;
- const originalBuild=model.build,adapter={frame,view,doc,owner,reports,data:null,request:0,trigger:null};
+ const originalBuild=model.build,adapter={frame,view,doc,owner,reports,data:null,currentSnapshot:null,request:0,trigger:null};
  // Use the original presenter's view-model contract. The server controls phase
  // availability, including midnight openings outside the reference phase dates.
- model.build=(id,packet,context)=>websitePlanetReport(model,originalBuild(id,null,{...context,catalog:[],reportConfig:{}}),adapter.data?.reports.find(report=>report.id===id));
+ model.build=(id,packet,context)=>websitePlanetReport(model,originalBuild(id,null,{...context,catalog:[],reportConfig:{}}),adapter.data?.reports.find(report=>report.id===id),adapter.currentSnapshot);
  const button=doc.querySelector('.bottom-nav [data-tab="reports"]');
  button.disabled=false;button.title='查看我的阶段报告';button.querySelector('span').textContent='星球报告';
  button.addEventListener('click',event=>{event.preventDefault();event.stopImmediatePropagation();showPlanetReports(button);},true);
  // The in-planet hint fetches fresh authenticated facts through the same entry.
  doc.getElementById('report-hint').addEventListener('click',event=>{event.preventDefault();event.stopImmediatePropagation();showPlanetReports(button);},true);
- doc.getElementById('reports-view').addEventListener('close',()=>{++adapter.request;adapter.restore?.();adapter.trigger?.isConnected&&adapter.trigger.focus({preventScroll:true});adapter.trigger=null;});
+ doc.getElementById('reports-view').addEventListener('close',()=>{++adapter.request;adapter.currentSnapshot=null;adapter.restore?.();adapter.trigger?.isConnected&&adapter.trigger.focus({preventScroll:true});adapter.trigger=null;});
  planetReportFrames.set(doc,adapter);return adapter;
 }
 async function showPlanetReports(trigger){
@@ -68,6 +79,8 @@ async function showPlanetReports(trigger){
   const data=await api('/api/herstory/planet-reports');
   if(request!==adapter.request||state.me?.id!==owner||!frame.isConnected||frame.contentWindow!==view)return;
   if(data.owner?.id!==owner||data.campaign_id!==view.HerstoryReportModel.CAMPAIGN)throw Error('报告数据归属不匹配');
+  adapter.currentSnapshot=null;
+  try{adapter.currentSnapshot=captureCurrentReportPlanet(adapter);}catch{/* Keep records readable if WebGL capture is unavailable. */}
   adapter.data=data;target.removeAttribute('aria-busy');
   reports.applyData({user_id:owner,campaign_id:data.campaign_id,revision:Date.parse(data.generated_at),phases:{}});
  }catch(error){
