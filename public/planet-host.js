@@ -6,6 +6,20 @@ function planetPage() {
   return `<section class="planet-shell"><div class="planet-heading"><div><span class="eyebrow">HERSTORY / MY PLANET</span><h1>${welcome?'这颗星球，属于你。':'我的星球'}</h1><p>${welcome?'个人资料已保存。颜色已为你确定，开始探索你的星球吧。':'在这里看见自己，也看见与你相遇的邻居。'}</p></div><div class="planet-actions">${welcome&&state.me.avatar_locked?'<button class="btn" data-action="planet-start">开始探索我的星球 ↗</button>':''}${!state.me.avatar_locked?'<button class="btn" data-action="planet-setup">设置头像与资料 ↗</button>':'<a class="btn light" href="#me">我的主页 ↗</a>'}<button type="button" class="btn light" data-action="planet-reports">星球报告</button><a class="text-button" href="#events">返回活动</a></div></div><p id="planet-loading" class="muted" role="status">正在打开你的星球…</p><div id="planet-load-error" hidden role="alert"><p>星球暂时未能加载，已保存的信息不会丢失。</p><button class="btn light" data-action="reload-planet">重新加载</button></div><iframe id="planet-frame" src="/planet?view=${field?'field':'mine'}" title="我的 Herstory 星球：星域与 3D／2D 展示" allow="web-share" referrerpolicy="same-origin"></iframe></section>`;
 }
 let planetLoadTimer,planetVisibilityObserver;
+// Photo dates are website labels only. The runtime's day stays untouched: it
+// disables demo growth and must never be advanced to generate a date stamp.
+function planetPhotoDate(now=Date.now()) {
+  return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
+}
+function planetPhotoDay(date=planetPhotoDate()) {
+  const start=Date.parse('2026-10-19T00:00:00+08:00'),stamp=Date.parse(date+'T00:00:00+08:00');
+  return Number.isFinite(stamp)?Math.max(0,Math.floor((stamp-start)/86400000)+1):0;
+}
+function mountPlanetPhoto(frame) {
+  const photo=frame.contentWindow?.HerstoryPhoto;
+  if(!photo)return;
+  Object.defineProperty(photo.config,'day',{configurable:true,enumerable:true,get(){return planetPhotoDay(photo.config.date||planetPhotoDate());}});
+}
 function mountPlanet() {
   clearTimeout(planetLoadTimer);
   planetVisibilityObserver?.disconnect();
@@ -18,6 +32,7 @@ window.addEventListener('message',event=>{
   const frame=document.querySelector('#planet-frame');
   if(event.origin!==location.origin||!frame||event.source!==frame.contentWindow)return;
   if(event.data?.type==='herstory:planet-ready'){
+    mountPlanetPhoto(frame);
     clearTimeout(planetLoadTimer);document.querySelector('#planet-loading').hidden=true;document.querySelector('#planet-load-error').hidden=true;
   }
   if(event.data?.type==='herstory:session-expired'){frame.remove();refresh();}

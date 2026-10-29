@@ -39,7 +39,10 @@ try{
   assert.equal(await reportFrame.locator('.report-totals strong').first().innerText(),'1');
   assert.equal(await reportFrame.locator('.report-stats strong').first().innerText(),'1');
   assert.match(await reportFrame.locator('#report-reading').innerText(),/尚未归档/);
-  assert.equal(await reportFrame.getByRole('button',{name:'保存星球与回顾',exact:true}).isDisabled(),true);
+  await reportFrame.locator('img.report-planet').waitFor({state:'visible'});
+  assert.match(await reportFrame.locator('.report-copy').innerText(),/当前星球.*拍摄于/);
+  await reportFrame.getByRole('button',{name:'保存星球与回顾',exact:true}).waitFor();
+  assert.equal(await reportFrame.getByRole('button',{name:'保存星球与回顾',exact:true}).isDisabled(),false);
   assert.equal(await page.locator('#planet-report-content').count(),0);
   assert.ok(await reportFrame.locator('html').evaluate(e=>e.scrollWidth<=innerWidth));
   await page.screenshot({path:`${out}/reports-${width}.png`});
